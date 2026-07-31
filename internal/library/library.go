@@ -47,7 +47,7 @@ func Scan(root string) ([]Track, error) {
 		if walkErr != nil {
 			return walkErr
 		}
-		if entry.IsDir() {
+		if !entry.Type().IsRegular() {
 			return nil
 		}
 		if _, ok := supportedExtensions[strings.ToLower(filepath.Ext(entry.Name()))]; !ok {

@@ -31,6 +31,25 @@ func TestScanFindsSupportedFilesRecursively(t *testing.T) {
 	}
 }
 
+func TestScanSkipsSymlinkedTracks(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "track.mp3")
+	if err := os.WriteFile(target, []byte("test"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, filepath.Join(root, "linked.opus")); err != nil {
+		t.Fatal(err)
+	}
+
+	tracks, err := Scan(root)
+	if err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+	if len(tracks) != 1 || tracks[0].Path != target {
+		t.Fatalf("Scan() tracks = %#v, want only %q", tracks, target)
+	}
+}
+
 func TestScanRejectsFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "song.mp3")
 	if err := os.WriteFile(path, nil, 0o644); err != nil {
