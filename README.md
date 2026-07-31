@@ -1,51 +1,33 @@
 # KASET
 
 <p align="center">
-  <strong>Yerel müzik arşivleri için hızlı, klavye odaklı terminal müzik oynatıcı.</strong>
+  <strong>Yerel müzik arşivleri için hızlı ve klavye odaklı terminal müzik oynatıcı.</strong>
 </p>
 
 <p align="center">
   <img alt="Go 1.24+" src="https://img.shields.io/badge/Go-1.24%2B-00ADD8?logo=go&logoColor=white">
-  <img alt="Platform Linux" src="https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black">
-  <img alt="Oynatıcı mpv" src="https://img.shields.io/badge/player-mpv-691F69?logo=mpv&logoColor=white">
+  <img alt="Linux" src="https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black">
+  <img alt="mpv" src="https://img.shields.io/badge/player-mpv-691F69?logo=mpv&logoColor=white">
 </p>
 
-Müzik klasörlerini ve alt klasörlerini tarayan terminal tabanlı müzik oynatıcı.
-
-**Arama · Düzenlenebilir çalma sırası · Kalıcı çalma listeleri · Tek şarkı loop modu**
+KASET, müzik klasörlerini alt dizinleriyle birlikte tarayan terminal tabanlı bir müzik oynatıcıdır. Arama, düzenlenebilir çalma sırası, kalıcı çalma listeleri ve tek parça döngüsü sunar.
 
 <p align="center">
   <img src="docs/images/kaset-main.png" alt="KASET ana ekranı" width="900">
 </p>
 
-## İçindekiler
-
-- [Özellikler](#özellikler)
-- [Gereksinimler](#gereksinimler)
-- [Kurulum](#kurulum)
-- [Kullanım](#kullanım)
-- [Kontroller](#kontroller)
-- [Çalma sırası](#çalma-sırası)
-- [Çalma listeleri](#çalma-listeleri)
-- [Veri dosyası](#veri-dosyası)
-- [Desteklenen formatlar](#desteklenen-formatlar)
-- [Mimari](#mimari)
-- [Geliştirme ve test](#geliştirme-ve-test)
-- [Sorun giderme](#sorun-giderme)
-- [Katkı](#katkı)
-
 ## Özellikler
 
-- Alt klasörler dahil yerel müzik arşivi taraması
-- Arama sonuçlarından doğrudan çalma sırası oluşturma
-- Parça ekleme, silme ve yeniden sıralama
-- Kaydedilebilir çalma listeleri
-- Çalma listelerini kaydetme, yükleme, güncelleme ve silme
-- Tek şarkı loop modu
-- Oynat/duraklat, ileri/geri sarma, ses ve sessiz mod kontrolleri
-- Başlık, sanatçı, albüm, süre ve ilerleme bilgisi
-- Dar terminal pencerelerine uyumlu arayüz
-- Uygulama kapanırken `mpv` sürecini kapatma
+* Alt klasörler dahil yerel müzik arşivi taraması
+* Anlık arama ve filtrelenmiş sonuçlardan çalma sırası oluşturma
+* Parça ekleme, kaldırma ve yeniden sıralama
+* Kalıcı çalma listeleri
+* Tek parça döngüsü
+* Oynat, duraklat, durdur, ileri ve geri sar
+* Ses seviyesi ve sessiz mod kontrolü
+* Başlık, sanatçı, albüm, süre ve ilerleme bilgisi
+* Dar terminal pencerelerine uyum sağlayan arayüz
+* Uygulama kapanırken `mpv` sürecini güvenli biçimde sonlandırma
 
 <p align="center">
   <img src="docs/images/kaset-demo.gif" alt="KASET kullanım demosu" width="900">
@@ -53,37 +35,36 @@ Müzik klasörlerini ve alt klasörlerini tarayan terminal tabanlı müzik oynat
 
 ## Gereksinimler
 
-- Linux
-- Go 1.24 veya üzeri
-- [`mpv`](https://mpv.io/)
-- ANSI renk ve UTF-8 destekli terminal
+* Linux
+* Go 1.24 veya üzeri
+* [`mpv`](https://mpv.io/)
+* ANSI renklerini ve UTF-8 karakterlerini destekleyen bir terminal
 
 ## Kurulum
 
-### Kaynaktan derleme
-
-Depoyu klonladıktan sonra proje klasöründe çalıştır:
+Depoyu klonladıktan sonra proje dizininde binary'yi derleyin:
 
 ```bash
 go build -trimpath -ldflags="-s -w" -o kaset ./cmd/kaset
+```
+
+Ardından bir müzik klasörüyle çalıştırın:
+
+```bash
 ./kaset ~/Music
 ```
 
-### Sisteme ekleme
-
-`kaset` komutunu her klasörden çalıştırmak için binary'yi `/usr/local/bin` altına bağla:
+Komutu her dizinden kullanmak için binary'yi `/usr/local/bin` altına bağlayabilirsiniz:
 
 ```bash
 sudo ln -sfn "$(pwd)/kaset" /usr/local/bin/kaset
 ```
 
-Ardından:
-
 ```bash
 kaset ~/Music
 ```
 
-> Binary'yi yeniden derledikten sonra aynı klasörde kaldığı sürece bağlantıyı yenilemek gerekmez.
+Binary aynı konumda kaldığı sürece yeniden derleme sonrasında sembolik bağlantıyı yenilemeniz gerekmez.
 
 ## Kullanım
 
@@ -91,99 +72,95 @@ kaset ~/Music
 kaset [MÜZİK_KLASÖRÜ]
 ```
 
+Örnekler:
+
 ```bash
-# Müzik klasörünü aç
+# Belirli bir müzik klasörünü tara
 kaset ~/Music
 
-# Geçerli klasörü tara
+# Geçerli dizini tara
 kaset .
 
 # Yardımı göster
 kaset -h
 ```
 
-Klasör verilmezse geçerli klasör taranır. Desteklenen bir ses dosyası bulunamazsa uygulama hata mesajıyla kapanır.
+Klasör belirtilmezse geçerli dizin taranır. Desteklenen bir ses dosyası bulunamazsa uygulama hata mesajıyla kapanır.
 
 ## Kontroller
 
 ### Oynatma
 
-| Tuş | İşlev |
-| --- | --- |
-| `Space` | Oynat / duraklat |
-| `n` / `p` | Sonraki / önceki parça |
-| `←` / `h` | 5 saniye geri sar |
-| `→` | 5 saniye ileri sar |
-| `l` | Tek şarkı loop modunu aç / kapat |
-| `+` / `-` | Sesi artır / azalt |
-| `m` | Sessiz modu aç / kapat |
-| `s` | Oynatmayı durdur, çalma sırasını koru |
-| `q` | Uygulamadan çık |
+| Tuş       | İşlev                                 |
+| --------- | ------------------------------------- |
+| `Space`   | Oynat veya duraklat                   |
+| `n` / `p` | Sonraki veya önceki parça             |
+| `←` / `h` | 5 saniye geri sar                     |
+| `→`       | 5 saniye ileri sar                    |
+| `l`       | Tek parça döngüsünü aç veya kapat     |
+| `+` / `-` | Sesi artır veya azalt                 |
+| `m`       | Sessiz modu aç veya kapat             |
+| `s`       | Oynatmayı durdur, çalma sırasını koru |
+| `q`       | Uygulamadan çık                       |
 
 ### Kütüphane
 
-| Tuş | İşlev |
-| --- | --- |
-| `j` / `k`, `↑` / `↓` | Listede gezin |
-| `g` / `G` | Listenin başına / sonuna git |
-| `Enter` | Görünen listeyi çalma sırasına al ve seçili parçayı oynat |
-| `a` | Seçili parçayı sıranın sonuna ekle |
-| `A` | Görünen tüm parçaları sıraya ekle |
-| `/` | Aramayı aç |
-| `Esc` | Aramayı kapat; ikinci basışta aramayı temizle |
-| `t` | Alt paneli gizle / göster |
-| `Tab` | Kütüphane ve çalma sırası arasında geçiş yap |
+| Tuş                  | İşlev                                               |
+| -------------------- | --------------------------------------------------- |
+| `j` / `k`, `↑` / `↓` | Listede gezin                                       |
+| `g` / `G`            | Listenin başına veya sonuna git                     |
+| `Enter`              | Görünen parçaları sıraya al ve seçili parçayı oynat |
+| `a`                  | Seçili parçayı sıranın sonuna ekle                  |
+| `A`                  | Görünen tüm parçaları sıraya ekle                   |
+| `/`                  | Aramayı aç                                          |
+| `Esc`                | Aramayı kapat; tekrar basıldığında sorguyu temizle  |
+| `t`                  | Alt paneli gizle veya göster                        |
+| `Tab`                | Kütüphane ve çalma sırası arasında geçiş yap        |
 
 ### Çalma sırası
 
-| Tuş | İşlev |
-| --- | --- |
-| `j` / `k`, `↑` / `↓` | Sırada gezin |
-| `g` / `G` | Sıranın başına / sonuna git |
-| `Enter` | Seçili parçayı oynat |
-| `J` / `K` | Seçili parçayı aşağı / yukarı taşı |
-| `x` | Seçili parçayı sıradan çıkar |
-| `c` | Sırayı temizle |
-| `S` | Sırayı çalma listesi olarak kaydet |
-| `Tab` | Kütüphaneye dön |
+| Tuş                  | İşlev                                 |
+| -------------------- | ------------------------------------- |
+| `j` / `k`, `↑` / `↓` | Sırada gezin                          |
+| `g` / `G`            | Sıranın başına veya sonuna git        |
+| `Enter`              | Seçili parçayı oynat                  |
+| `J` / `K`            | Seçili parçayı aşağı veya yukarı taşı |
+| `x`                  | Seçili parçayı sıradan çıkar          |
+| `c`                  | Sırayı temizle                        |
+| `S`                  | Sırayı çalma listesi olarak kaydet    |
+| `Tab`                | Kütüphaneye dön                       |
 
 ### Çalma listeleri
 
-| Tuş | İşlev |
-| --- | --- |
-| `P` | Çalma listelerini aç / kapat |
-| `j` / `k`, `↑` / `↓` | Listede gezin |
-| `g` / `G` | Listenin başına / sonuna git |
-| `Enter` | Seçili listeyi sıraya yükle; silme onayında listeyi sil |
-| `x` | Seçili liste için silme onayını aç |
-| `Esc` | Silme işlemini iptal et veya ekranı kapat |
+| Tuş                  | İşlev                                                  |
+| -------------------- | ------------------------------------------------------ |
+| `P`                  | Çalma listelerini aç veya kapat                        |
+| `j` / `k`, `↑` / `↓` | Listede gezin                                          |
+| `g` / `G`            | Listenin başına veya sonuna git                        |
+| `Enter`              | Seçili listeyi sıraya yükle veya silme işlemini onayla |
+| `x`                  | Seçili liste için silme onayını aç                     |
+| `Esc`                | Silme işlemini iptal et veya ekranı kapat              |
 
 ## Çalma sırası
 
-Kütüphanede `Enter` tuşu, o anda görünen parçaları yeni çalma sırası yapar ve seçili parçayı başlatır. Arama açıksa yalnızca arama sonuçları kullanılır; ekrandaki sıra korunur.
+Kütüphanede `Enter` tuşuna basıldığında ekranda görünen parçalar yeni çalma sırası olur ve seçili parça çalmaya başlar. Arama açıksa yalnızca arama sonuçları kullanılır.
 
-Parçaları tek tek eklemek için:
+Mevcut sırayı koruyarak parça eklemek için `a`, görünen tüm parçaları eklemek için `A` kullanılabilir. `Tab` ile çalma sırası paneline geçtikten sonra parçalar `J` ve `K` tuşlarıyla yeniden sıralanabilir.
 
-1. Kütüphanede parçayı seç.
-2. `a` ile sıraya ekle.
-3. Gerekirse `A` ile görünen tüm parçaları ekle.
-4. `Tab` ile çalma sırasına geç.
-5. `J` ve `K` ile sırayı düzenle.
-6. `Enter` ile istediğin parçayı başlat.
-
-Loop açıkken şarkı bittiğinde aynı parça yeniden başlar. `l` ile normal akışa dön.
+Tek parça döngüsü açıkken çalan parça bittiğinde yeniden başlar. Normal sıraya dönmek için `l` tuşuna tekrar basın.
 
 ## Çalma listeleri
 
-`S` tuşu mevcut çalma sırasını kaydeder. Bir ad gir ve `Enter` tuşuna bas.
+Mevcut çalma sırasını kaydetmek için `S` tuşuna basın, bir ad girin ve `Enter` ile onaylayın.
 
-- Aynı ad zaten varsa üzerine yazmak için onay ister.
-- `P` kayıtlı çalma listelerini açar.
-- `Enter` seçili listeyi çalma sırasına yükler, oynatmayı başlatmaz.
-- Çalma sırası panelinde `Enter` ile parça başlatılır. Henüz bir parça çalmıyorsa `Space` de sırayı başlatır.
-- `x` silme onayını açar.
-- Silinen liste, o anda yüklenmiş çalma sırasını etkilemez.
-- Kütüphanede artık olmayan dosyalar yükleme sırasında atlanır ve sayı olarak bildirilir.
+* Aynı adda bir liste varsa üzerine yazmadan önce onay istenir.
+* `P` kayıtlı çalma listelerini açar.
+* `Enter` seçili listeyi çalma sırasına yükler ancak oynatmayı başlatmaz.
+* Çalma sırası panelindeki `Enter`, seçili parçayı başlatır.
+* Henüz bir parça çalmıyorsa `Space` sıranın ilk parçasını başlatır.
+* `x` seçili liste için silme onayını açar.
+* Silinen bir çalma listesi, o anda yüklenmiş çalma sırasını etkilemez.
+* Artık kütüphanede bulunmayan dosyalar yükleme sırasında atlanır.
 
 ## Veri dosyası
 
@@ -193,15 +170,15 @@ Loop açıkken şarkı bittiğinde aynı parça yeniden başlar. `l` ile normal 
 $XDG_CONFIG_HOME/kaset/playlists.json
 ```
 
-`XDG_CONFIG_HOME` tanımlı değilse varsayılan yol:
+`XDG_CONFIG_HOME` tanımlı değilse şu yol kullanılır:
 
 ```text
 ~/.config/kaset/playlists.json
 ```
 
-Klasör `0700`, dosya `0600` izinleriyle oluşturulur. Kayıt sırasında önce geçici bir dosya yazılır, ardından asıl dosyanın yerine alınır.
+Yapılandırma dizini `0700`, veri dosyası ise `0600` izinleriyle oluşturulur. Kayıt işlemi önce geçici bir dosyaya yapılır, ardından bu dosya asıl veri dosyasının yerine geçirilir.
 
-Örnek:
+Örnek veri:
 
 ```json
 {
@@ -218,7 +195,7 @@ Klasör `0700`, dosya `0600` izinleriyle oluşturulur. Kayıt sırasında önce 
 }
 ```
 
-Listeler tam dosya yollarını saklar. Bir dosyayı taşırsan veya yeniden adlandırırsan KASET o parçayı atlar.
+Çalma listeleri parçaların tam dosya yollarını saklar. Taşınan veya yeniden adlandırılan dosyalar liste yüklenirken atlanır.
 
 ## Desteklenen formatlar
 
@@ -226,11 +203,11 @@ Listeler tam dosya yollarını saklar. Bir dosyayı taşırsan veya yeniden adla
 mp3  flac  ogg  opus  m4a  aac  wav  wma  ape
 ```
 
-Dosyanın oynatılabilmesi, sistemindeki `mpv` kurulumuna bağlıdır.
+Bir dosyanın gerçekten oynatılabilmesi, sistemdeki `mpv` kurulumunun ilgili biçimi desteklemesine bağlıdır.
 
-> **Not:** KASET yalnızca normal dosyaları kütüphaneye ekler; sembolik bağlantılar tarama sırasında atlanır.
+KASET yalnızca normal dosyaları kütüphaneye ekler. Sembolik bağlantılar tarama sırasında atlanır.
 
-## Mimari
+## Proje yapısı
 
 ```text
 kaset/
@@ -244,31 +221,44 @@ kaset/
 
 Kullanılan temel bileşenler:
 
-- [`Bubble Tea`](https://github.com/charmbracelet/bubbletea) · Terminal arayüzü
-- [`Bubbles`](https://github.com/charmbracelet/bubbles) · Arayüz bileşenleri
-- [`Lip Gloss`](https://github.com/charmbracelet/lipgloss) · Terminal stilleri
-- [`mpv JSON IPC`](https://mpv.io/manual/stable/#json-ipc) · Oynatma kontrolü ve durum bilgisi
+* [`Bubble Tea`](https://github.com/charmbracelet/bubbletea): Terminal arayüzü
+* [`Bubbles`](https://github.com/charmbracelet/bubbles): Arayüz bileşenleri
+* [`Lip Gloss`](https://github.com/charmbracelet/lipgloss): Terminal stilleri
+* [`mpv JSON IPC`](https://mpv.io/manual/stable/#json-ipc): Oynatma kontrolü ve durum bilgisi
 
-KASET, `mpv`yi tek bir süreç olarak ve `--no-config` ile başlatır. Terminal veya uygulama beklenmedik biçimde kapanırsa `mpv`nin arka planda kalmaması için kapatma sinyalleri kullanır.
+KASET, `mpv`yi tek bir süreç olarak `--no-config` seçeneğiyle başlatır. Uygulamanın veya terminalin beklenmedik biçimde kapanması durumunda `mpv`nin arka planda kalmasını önlemek için süreç sonlandırma sinyalleri kullanılır.
 
-## Geliştirme ve test
+## Geliştirme
+
+Tüm testleri çalıştırmak için:
 
 ```bash
-# Tüm testler
 go test ./...
+```
 
-# Veri yarışı kontrolü
+Veri yarışı kontrolü:
+
+```bash
 go test -race ./...
+```
 
-# Statik analiz
+Statik analiz:
+
+```bash
 go vet ./...
+```
 
-# mpv kullanan entegrasyon testleri
+`mpv` kullanan entegrasyon testleri:
+
+```bash
 KASET_INTEGRATION=1 go test \
   -run 'Test(PlayerIntegration|ParentDeathStopsMPV)$' \
   ./internal/player
+```
 
-# Release binary
+Release binary oluşturmak için:
+
+```bash
 go build -trimpath -ldflags="-s -w" -o kaset ./cmd/kaset
 ```
 
@@ -276,7 +266,7 @@ go build -trimpath -ldflags="-s -w" -o kaset ./cmd/kaset
 
 ### `mpv PATH içinde bulunamadı`
 
-`mpv`yi paket yöneticinle kur ve kurulumu kontrol et:
+`mpv`yi dağıtımınızın paket yöneticisiyle kurun ve erişilebilir olduğunu doğrulayın:
 
 ```bash
 mpv --version
@@ -284,19 +274,19 @@ mpv --version
 
 ### Desteklenen ses dosyası bulunamadı
 
-Doğru klasörü verdiğini ve uzantının desteklenen formatlardan biri olduğunu kontrol et:
+Doğru klasörü verdiğinizden ve dosya uzantısının desteklendiğinden emin olun:
 
 ```bash
 kaset /müzik/klasörü
 ```
 
-### Çalma listesinde bazı parçalar yok
+### Çalma listesinde bazı parçalar eksik
 
-Çalma listeleri dosya yolunu saklar. Dosya taşındıysa veya yeniden adlandırıldıysa eski yol geçersiz kalır. KASET bu parçaları atlar.
+Çalma listeleri parçaların tam dosya yollarını saklar. Dosya taşınmış veya yeniden adlandırılmışsa eski yol geçersiz olur ve KASET parçayı atlar.
 
 ### Uygulama kapandıktan sonra ses devam ediyor
 
-Çalıştırdığın `kaset` komutunun güncel binary'yi gösterdiğini kontrol et:
+Çalıştırılan `kaset` komutunun güncel binary'yi gösterdiğini kontrol edin:
 
 ```bash
 readlink -f /usr/local/bin/kaset
@@ -304,9 +294,14 @@ readlink -f /usr/local/bin/kaset
 
 ## Katkı
 
-Katkılar memnuniyetle karşılanır. Bir hata veya fikir için önce uygun [issue şablonunu](.github/ISSUE_TEMPLATE) kullanarak konu aç. Kod değişikliği göndereceksen:
+Hata bildirimleri, özellik önerileri ve kod katkıları kabul edilir.
 
-1. Depoyu forkla ve ayrı bir dal oluştur.
-2. Değişikliği dar kapsamlı tut; davranış değişiyorsa ilgili testi ekle veya güncelle.
-3. Göndermeden önce `go test ./...` ve `go vet ./...` komutlarını çalıştır.
-4. Ne değiştiğini ve nasıl doğruladığını açıklayan bir pull request aç.
+Kod değişikliği göndermeden önce:
+
+1. Depoyu forklayın ve ayrı bir dal oluşturun.
+2. Değişikliği mümkün olduğunca dar kapsamlı tutun.
+3. Davranış değişiyorsa ilgili testleri ekleyin veya güncelleyin.
+4. `go test ./...` ve `go vet ./...` komutlarını çalıştırın.
+5. Değişikliği ve nasıl doğrulandığını açıklayan bir pull request açın.
+
+Hata veya özellik önerileri için uygun [issue şablonunu](.github/ISSUE_TEMPLATE) kullanabilirsiniz.
