@@ -32,6 +32,7 @@ Müzik klasörlerini ve alt klasörlerini tarayan terminal tabanlı müzik oynat
 - [Mimari](#mimari)
 - [Geliştirme ve test](#geliştirme-ve-test)
 - [Sorun giderme](#sorun-giderme)
+- [Katkı](#katkı)
 
 ## Özellikler
 
@@ -298,3 +299,12 @@ kaset /müzik/klasörü
 ```bash
 readlink -f /usr/local/bin/kaset
 ```
+
+## Katkı
+
+Katkılar memnuniyetle karşılanır. Bir hata veya fikir için önce uygun [issue şablonunu](.github/ISSUE_TEMPLATE) kullanarak konu aç. Kod değişikliği göndereceksen:
+
+1. Depoyu forkla ve ayrı bir dal oluştur.
+2. Değişikliği dar kapsamlı tut; davranış değişiyorsa ilgili testi ekle veya güncelle.
+3. Göndermeden önce `go test ./...` ve `go vet ./...` komutlarını çalıştır.
+4. Ne değiştiğini ve nasıl doğruladığını açıklayan bir pull request aç.
