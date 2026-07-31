@@ -228,6 +228,8 @@ mp3  flac  ogg  opus  m4a  aac  wav  wma  ape
 
 Dosyanın oynatılabilmesi, sistemindeki `mpv` kurulumuna bağlıdır.
 
+> **Not:** KASET yalnızca normal dosyaları kütüphaneye ekler; sembolik bağlantılar tarama sırasında atlanır.
+
 ## Mimari
 
 ```text
