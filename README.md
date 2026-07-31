@@ -53,7 +53,7 @@ Müzik klasörlerini ve alt klasörlerini tarayan terminal tabanlı müzik oynat
 ## Gereksinimler
 
 - Linux
-- Go 1.24.2 veya üzeri
+- Go 1.24 veya üzeri
 - [`mpv`](https://mpv.io/)
 - ANSI renk ve UTF-8 destekli terminal
 
