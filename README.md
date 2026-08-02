@@ -19,7 +19,7 @@ KASET, yerel müzik arşivini alt dizinleriyle birlikte tarar ve `mpv` üzerinde
 
 ## Hızlı başlangıç
 
-Linux'ta [`mpv`](https://mpv.io/) kuruluysa en güncel amd64 dosyasını [GitHub Releases](https://github.com/ArdaYILDIZ-DEV/Kaset/releases) üzerinden indirin ve çalıştırın:
+Linux'ta [`mpv`](https://mpv.io/) kuruluysa en güncel amd64 dosyasını [GitHub Releases](https://github.com/ArdaYILDIZ-DEV/Kaset/releases) üzerinden indirin ya da bu kodu çalıştırın:
 
 ```bash
 curl -fL https://github.com/ArdaYILDIZ-DEV/Kaset/releases/latest/download/kaset-linux-amd64 -o kaset && chmod +x kaset
