@@ -135,6 +135,7 @@ func (s *Store) Save(settings Settings) error {
 	})
 }
 
+// withLock serializes access across processes and enforces private directory permissions.
 func (s *Store) withLock(action func() error) error {
 	directory := filepath.Dir(s.path)
 	if err := os.MkdirAll(directory, 0o700); err != nil {
@@ -155,6 +156,7 @@ func (s *Store) withLock(action func() error) error {
 	return action()
 }
 
+// recoverInvalid preserves corrupt settings before the caller falls back to defaults.
 func (s *Store) recoverInvalid(cause error) error {
 	backupPath := fmt.Sprintf("%s.corrupt-%s", s.path, time.Now().Format("20060102-150405.000000000"))
 	if err := os.Rename(s.path, backupPath); err != nil {
@@ -163,6 +165,7 @@ func (s *Store) recoverInvalid(cause error) error {
 	return &RecoveryError{BackupPath: backupPath, Cause: cause}
 }
 
+// validate rejects settings that cannot be safely restored in a later session.
 func validate(settings Settings) error {
 	if settings.Version != fileVersion {
 		return fmt.Errorf("desteklenmeyen ayar dosyası sürümü: %d", settings.Version)

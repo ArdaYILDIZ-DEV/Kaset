@@ -18,7 +18,9 @@ import (
 const fileVersion = 1
 
 var (
-	ErrExists   = errors.New("çalma listesi zaten var")
+	// ErrExists prevents an accidental overwrite unless it was explicitly confirmed.
+	ErrExists = errors.New("çalma listesi zaten var")
+	// ErrNotFound reports that the requested playlist is no longer stored.
 	ErrNotFound = errors.New("çalma listesi bulunamadı")
 )
 
@@ -174,6 +176,7 @@ func (s *Store) Delete(name string) error {
 	})
 }
 
+// withLock serializes read-modify-write operations across KASET processes.
 func (s *Store) withLock(action func() error) error {
 	directory := filepath.Dir(s.path)
 	if err := ensurePrivateDirectory(directory); err != nil {
@@ -192,6 +195,7 @@ func (s *Store) withLock(action func() error) error {
 	return action()
 }
 
+// read validates persisted data and recovers corrupt files before returning.
 func (s *Store) read() (fileData, error) {
 	content, err := os.ReadFile(s.path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -211,6 +215,7 @@ func (s *Store) read() (fileData, error) {
 	return data, nil
 }
 
+// recoverInvalid moves corrupt data aside instead of overwriting it.
 func (s *Store) recoverInvalid(cause error) error {
 	backupPath := fmt.Sprintf("%s.corrupt-%s", s.path, time.Now().Format("20060102-150405.000000000"))
 	if err := os.Rename(s.path, backupPath); err != nil {
@@ -219,6 +224,7 @@ func (s *Store) recoverInvalid(cause error) error {
 	return &RecoveryError{BackupPath: backupPath, Cause: cause}
 }
 
+// write uses a synced temporary file and rename to avoid partial JSON updates.
 func (s *Store) write(data fileData) error {
 	directory := filepath.Dir(s.path)
 	if err := ensurePrivateDirectory(directory); err != nil {
@@ -265,6 +271,7 @@ func emptyFileData() fileData {
 	return fileData{Version: fileVersion, Playlists: []Playlist{}}
 }
 
+// validateFileData checks the on-disk schema, names, and absolute track paths.
 func validateFileData(data fileData) error {
 	if data.Version != fileVersion {
 		return fmt.Errorf("desteklenmeyen dosya sürümü: %d", data.Version)
@@ -286,6 +293,7 @@ func validateFileData(data fileData) error {
 	return nil
 }
 
+// validateTracks normalizes paths for writes and rejects relative paths read from disk.
 func validateTracks(tracks []string, requireAbsolute bool) ([]string, error) {
 	if len(tracks) == 0 {
 		return nil, errors.New("boş çalma sırası kaydedilemez")

@@ -42,6 +42,7 @@ type commandResult struct {
 	err error
 }
 
+// tailBuffer retains only recent mpv stderr for bounded startup diagnostics.
 type tailBuffer struct {
 	mu    sync.Mutex
 	data  []byte
@@ -222,6 +223,7 @@ func (p *Player) ToggleMute() error {
 	return p.command("cycle", "mute")
 }
 
+// observeProperties subscribes to the mpv state mirrored by the TUI.
 func (p *Player) observeProperties() error {
 	properties := []string{"time-pos", "duration", "pause", "volume", "mute", "media-title", "metadata"}
 	for id, name := range properties {
@@ -232,6 +234,7 @@ func (p *Player) observeProperties() error {
 	return nil
 }
 
+// command sends one request and waits for its matching response or connection failure.
 func (p *Player) command(args ...any) error {
 	requestID, result, err := p.sendCommand(args...)
 	if err != nil {
@@ -252,6 +255,7 @@ func (p *Player) command(args ...any) error {
 	}
 }
 
+// sendCommand registers the request before writing so readLoop can safely resolve fast replies.
 func (p *Player) sendCommand(args ...any) (uint64, <-chan commandResult, error) {
 	p.pendingMu.Lock()
 	p.nextRequestID++
@@ -280,6 +284,7 @@ func (p *Player) sendCommand(args ...any) (uint64, <-chan commandResult, error) 
 	return requestID, result, nil
 }
 
+// sendCommandWithoutReply is reserved for best-effort shutdown commands.
 func (p *Player) sendCommandWithoutReply(args ...any) {
 	payload, err := json.Marshal(map[string]any{"command": args})
 	if err != nil {
@@ -312,6 +317,7 @@ func (p *Player) resolveCommand(requestID uint64, result commandResult) {
 	}
 }
 
+// failPending releases every command waiter when the IPC connection closes.
 func (p *Player) failPending(err error) {
 	p.pendingMu.Lock()
 	pending := p.pending
@@ -322,6 +328,7 @@ func (p *Player) failPending(err error) {
 	}
 }
 
+// readLoop dispatches command responses and throttled asynchronous mpv events.
 func (p *Player) readLoop() {
 	defer close(p.readDone)
 	defer close(p.events)

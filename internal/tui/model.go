@@ -31,6 +31,7 @@ const (
 	promptDeletePlaylist
 )
 
+// playbackController keeps the TUI independent from the concrete mpv process.
 type playbackController interface {
 	Events() <-chan player.Event
 	Load(path string) error
@@ -245,6 +246,7 @@ func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleKey applies global shortcuts before delegating panel-specific input.
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
@@ -339,6 +341,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handlePanelKey interprets navigation and actions in the currently focused panel.
 func (m *Model) handlePanelKey(key string) {
 	switch m.panel {
 	case panelLibrary:
@@ -402,6 +405,7 @@ func (m *Model) handlePanelKey(key string) {
 	}
 }
 
+// run centralizes player availability checks and user-facing error feedback.
 func (m *Model) run(action func() error) bool {
 	if m.player == nil {
 		m.setError("mpv bağlantısı kapalı")
@@ -430,6 +434,7 @@ func (m *Model) clearFeedback() {
 	m.noticeText = ""
 }
 
+// waitForPlayerEvent subscribes to one event at a time in Bubble Tea's command model.
 func waitForPlayerEvent(events <-chan player.Event) tea.Cmd {
 	return func() tea.Msg {
 		event, ok := <-events

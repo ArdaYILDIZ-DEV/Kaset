@@ -58,6 +58,7 @@ func ScanWithIssues(root string) ([]Track, []ScanIssue, error) {
 	tracks := make([]Track, 0)
 	issues := make([]ScanIssue, 0)
 	err = filepath.WalkDir(absoluteRoot, func(path string, entry fs.DirEntry, walkErr error) error {
+		// Errors below the root are non-fatal so one unreadable folder does not hide the rest.
 		if walkErr != nil {
 			if path == absoluteRoot {
 				return walkErr

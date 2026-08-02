@@ -23,6 +23,7 @@ type libraryScanMsg struct {
 	err    error
 }
 
+// beginLibraryRefresh schedules a scan without blocking the Bubble Tea update loop.
 func (m Model) beginLibraryRefresh() (tea.Model, tea.Cmd) {
 	if m.scanning {
 		m.setNotice("Kütüphane zaten yenileniyor")
@@ -44,6 +45,7 @@ func scanLibrary(root string) tea.Cmd {
 	}
 }
 
+// applyLibraryScan remaps selections, playback, and queue entries by file path.
 func (m *Model) applyLibraryScan(message libraryScanMsg) {
 	m.scanning = false
 	if message.err != nil {
@@ -145,6 +147,7 @@ func (m *Model) refreshFilter() {
 	m.refreshFilterKeeping(selectedPath)
 }
 
+// refreshFilterKeeping rebuilds search results while preserving the selected track when possible.
 func (m *Model) refreshFilterKeeping(selectedPath string) {
 	query := strings.TrimSpace(m.search.Value())
 	m.filtered = m.filtered[:0]
@@ -166,6 +169,7 @@ func (m *Model) refreshFilterKeeping(selectedPath string) {
 	}
 }
 
+// searchContains combines Turkish casing rules with general Unicode case folding.
 func searchContains(value, query string) bool {
 	return strings.Contains(turkishLower.String(value), turkishLower.String(query)) ||
 		strings.Contains(unicodeFold.String(value), unicodeFold.String(query))

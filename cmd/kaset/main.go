@@ -33,6 +33,7 @@ func main() {
 	}
 }
 
+// run initializes the stores, library, player, and TUI, then persists session state.
 func run() error {
 	options, err := parseArguments(os.Args[1:], os.Stderr)
 	if err != nil || options.help {
@@ -132,6 +133,7 @@ func run() error {
 	return errors.Join(runErr, closeErr, settingsErr)
 }
 
+// parseArguments accepts at most one optional music directory.
 func parseArguments(arguments []string, output io.Writer) (cliOptions, error) {
 	flags := flag.NewFlagSet("kaset", flag.ContinueOnError)
 	flags.SetOutput(output)

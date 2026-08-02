@@ -11,6 +11,7 @@ import (
 	"kaset/internal/playlist"
 )
 
+// beginPlaylistSave opens the naming prompt for the current queue.
 func (m Model) beginPlaylistSave() (tea.Model, tea.Cmd) {
 	if m.queue.Len() == 0 {
 		m.setError("Kaydedilecek çalma sırası boş")
@@ -29,6 +30,7 @@ func (m Model) beginPlaylistSave() (tea.Model, tea.Cmd) {
 	return m, m.playlistName.Focus()
 }
 
+// handlePromptKey drives name entry, overwrite confirmation, and deletion confirmation.
 func (m Model) handlePromptKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.prompt {
 	case promptPlaylistName:
@@ -178,6 +180,7 @@ func (m *Model) closePlaylists() {
 	}
 }
 
+// refreshPlaylists retries once after the store recovers a corrupt data file.
 func (m *Model) refreshPlaylists() bool {
 	items, err := m.playlistStore.List()
 	if err != nil {
@@ -199,6 +202,7 @@ func (m *Model) refreshPlaylists() bool {
 	return true
 }
 
+// loadSelectedPlaylist maps stored paths back to the current library and skips missing files.
 func (m *Model) loadSelectedPlaylist() {
 	if m.playlistCursor < 0 || m.playlistCursor >= len(m.playlists) {
 		m.setError("Yüklenecek çalma listesi yok")

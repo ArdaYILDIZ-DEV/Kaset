@@ -71,6 +71,7 @@ func (m Model) View() string {
 	return strings.Join(lines[:height], "\n")
 }
 
+// panelView chooses a split or single-panel layout based on terminal width.
 func (m Model) panelView(width, available int) []string {
 	if width >= 100 {
 		rightPanel := panelQueue
@@ -89,6 +90,7 @@ func (m Model) panelView(width, available int) []string {
 	}
 }
 
+// wideLibraryView gives the library three fifths of the split layout.
 func (m Model) wideLibraryView(width, available int, rightPanel panelKind) []string {
 	contentWidth := max(2, width-3)
 	leftWidth := contentWidth * 3 / 5
@@ -445,6 +447,7 @@ func (m Model) helpText(width int) string {
 	}
 }
 
+// visibleRange centers the cursor when possible and keeps the window in bounds.
 func visibleRange(cursor, total, rows int) (int, int) {
 	if rows <= 0 || total <= 0 {
 		return 0, 0
@@ -488,6 +491,7 @@ func numberOrZero(value any) float64 {
 	return 0
 }
 
+// sanitize strips control characters before user-controlled text reaches the terminal.
 func sanitize(value string) string {
 	return strings.Map(func(r rune) rune {
 		if unicode.IsControl(r) {
@@ -497,6 +501,7 @@ func sanitize(value string) string {
 	}, value)
 }
 
+// truncate limits text by terminal cell width rather than rune or byte count.
 func truncate(value string, width int) string {
 	if width <= 0 {
 		return ""

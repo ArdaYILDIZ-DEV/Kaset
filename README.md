@@ -1,7 +1,7 @@
 # KASET
 
 <p align="center">
-  <strong>Yerel müzik arşivleri için hızlı ve klavye odaklı terminal müzik oynatıcı.</strong>
+  <strong>vi tarzı tuşlarla çalışan, Türkçe karakterlere duyarlı anlık arama sunan terminal müzik oynatıcı.</strong>
 </p>
 
 <p align="center">
@@ -11,11 +11,22 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-green.svg"></a>
 </p>
 
-KASET, müzik klasörlerini alt dizinleriyle birlikte tarayan terminal tabanlı bir müzik oynatıcıdır. Anlık arama, düzenlenebilir çalma sırası, kalıcı çalma listeleri, karışık çalma ve döngü seçenekleri sunar.
+KASET, yerel müzik arşivini alt dizinleriyle birlikte tarar ve `mpv` üzerinden çalar. Çalma sırasını uygulamadan çıkmadan düzenleyebilir, karıştırabilir ve çalma listesi olarak kaydedebilirsiniz.
 
 <p align="center">
   <img src="docs/images/kaset-main.png" alt="KASET ana ekranı" width="900">
 </p>
+
+## Hızlı başlangıç
+
+Linux'ta [`mpv`](https://mpv.io/) kuruluysa en güncel amd64 dosyasını [GitHub Releases](https://github.com/ArdaYILDIZ-DEV/Kaset/releases) üzerinden indirin ve çalıştırın:
+
+```bash
+curl -fL https://github.com/ArdaYILDIZ-DEV/Kaset/releases/latest/download/kaset-linux-amd64 -o kaset && chmod +x kaset
+./kaset ~/Music
+```
+
+arm64 kullanıyorsanız indirme adresinin sonundaki `amd64` bölümünü `arm64` olarak değiştirin. Yayımlanan dosyaların özetleri [`checksums.txt`](https://github.com/ArdaYILDIZ-DEV/Kaset/releases/latest/download/checksums.txt) içinde bulunur.
 
 ## Özellikler
 
@@ -41,15 +52,12 @@ KASET, müzik klasörlerini alt dizinleriyle birlikte tarayan terminal tabanlı 
 ## Gereksinimler
 
 * Linux
-* Go 1.24 veya üzeri
 * [`mpv`](https://mpv.io/)
 * ANSI renklerini ve UTF-8 karakterlerini destekleyen bir terminal
 
-## Kurulum
+## Kaynaktan derleme
 
-### Kaynaktan derleme
-
-Depoyu klonladıktan sonra proje dizininde binary'yi derleyin:
+Go 1.24 veya üzerini kurduktan sonra depoyu klonlayın ve proje dizininde KASET'i derleyin:
 
 ```bash
 go build -trimpath -ldflags="-s -w" -o kaset ./cmd/kaset
@@ -61,15 +69,11 @@ Ardından bir müzik klasörüyle çalıştırın:
 ./kaset ~/Music
 ```
 
-Komutu her dizinden kullanmak için binary'yi `/usr/local/bin` altına bağlayabilirsiniz:
+Komutu her dizinden kullanmak için derlenen dosyayı `/usr/local/bin` altına bağlayabilirsiniz:
 
 ```bash
 sudo ln -sfn "$(pwd)/kaset" /usr/local/bin/kaset
 ```
-
-### GitHub Release
-
-`v*` biçimindeki sürüm etiketleri için Linux amd64 ve arm64 binary'leri GitHub Releases altında otomatik oluşturulur. İndirdiğiniz dosyanın mimarinize uygun olduğunu ve `checksums.txt` içindeki SHA-256 özetiyle eşleştiğini doğrulayın.
 
 ## Kullanım
 
@@ -89,70 +93,24 @@ Klasör açıkça verilirse her zaman o klasör kullanılır. Klasör verilmezse
 
 Desteklenen bir ses dosyası bulunamazsa uygulama hata mesajıyla kapanır. Bir alt klasör okunamıyorsa kalan arşiv taranmaya devam eder ve arayüzde uyarı gösterilir.
 
-## Kontroller
+## Temel kontroller
 
-### Oynatma
+| Tuş | İşlev |
+|-----|-------|
+| `j` / `k`, `↑` / `↓` | Listede gezin |
+| `Enter` | Seçili parçayı oynat |
+| `Space` | Oynatmayı duraklat veya sürdür |
+| `n` / `p` | Sonraki veya önceki parçaya geç |
+| `/`, `Esc` | Aramayı aç veya kapat |
+| `a` / `A` | Seçili parçayı veya görünen tüm parçaları sıraya ekle |
+| `Tab` | Kütüphane ve çalma sırası arasında geçiş yap |
+| `P` | Çalma listelerini aç veya kapat |
+| `?` | Uygulama içi yardımda tüm kontrolleri göster |
+| `q` | Uygulamadan çık |
 
-| Tuş       | İşlev                                      |
-|------------|--------------------------------------------|
-| `Space`    | Oynat veya duraklat                        |
-| `n` / `p`  | Sonraki veya önceki parça                  |
-| `←` / `h`  | 5 saniye geri sar                          |
-| `→`        | 5 saniye ileri sar                         |
-| `l`        | Tek parça döngüsünü aç veya kapat          |
-| `R`        | Tüm çalma sırası döngüsünü aç veya kapat   |
-| `z`        | Henüz çalınmamış sıradaki parçaları karıştır |
-| `+` / `-`  | Sesi artır veya azalt                      |
-| `m`        | Sessiz modu aç veya kapat                  |
-| `s`        | Oynatmayı durdur, çalma sırasını koru      |
-| `q`        | Uygulamadan çık                            |
+Çalma sırasını yeniden düzenleme, döngü, karıştırma, ses ve görünüm kontrollerinin tamamını görmek için uygulamada `?` tuşuna basın.
 
-### Kütüphane
-
-| Tuş                   | İşlev                                               |
-|------------------------|-----------------------------------------------------|
-| `j` / `k`, `↑` / `↓`  | Listede gezin                                       |
-| `g` / `G`              | Listenin başına veya sonuna git                     |
-| `Enter`                | Görünen parçaları sıraya al ve seçili parçayı oynat |
-| `a`                    | Seçili parçayı sıranın sonuna ekle                  |
-| `A`                    | Görünen tüm parçaları sıraya ekle                   |
-| `/`                    | Aramayı aç                                          |
-| `Esc`                  | Aramayı kapat; tekrar basıldığında sorguyu temizle  |
-| `r`                    | Kütüphaneyi yeniden tara                            |
-| `d`                    | Göreli klasör ayrıntılarını aç veya kapat           |
-| `t`                    | Ana paneli gizle veya göster                        |
-| `Tab`                  | Odağı kütüphane ve çalma sırası arasında değiştir   |
-| `?`                    | Yardım ekranını aç veya kapat                       |
-
-### Çalma sırası
-
-| Tuş                   | İşlev                                 |
-|------------------------|---------------------------------------|
-| `j` / `k`, `↑` / `↓`  | Sırada gezin                          |
-| `g` / `G`              | Sıranın başına veya sonuna git        |
-| `Enter`                | Seçili parçayı oynat                  |
-| `J` / `K`              | Seçili parçayı aşağı veya yukarı taşı |
-| `x`                    | Seçili parçayı sıradan çıkar          |
-| `c`                    | Sırayı temizle                        |
-| `S`                    | Sırayı çalma listesi olarak kaydet    |
-| `Tab`                  | Odağı kütüphaneye taşı                |
-
-Çalan parça sıradan çıkarıldığında kesilmez. Parça bittikten sonra, kaldırılmadan önce arkasında bulunan parçayla devam edilir.
-
-### Çalma listeleri
-
-| Tuş                   | İşlev                                                       |
-|------------------------|-------------------------------------------------------------|
-| `P`                    | Çalma listelerini aç veya kapat                             |
-| `j` / `k`, `↑` / `↓`  | Listede gezin                                               |
-| `g` / `G`              | Listenin başına veya sonuna git                             |
-| `Enter`                | Seçili listeyi sıraya yükle veya silme işlemini onayla      |
-| `x`                    | Seçili liste için silme onayını aç                          |
-| `Esc`                  | Silme işlemini iptal et veya ekranı kapat                   |
-
-Geniş ekranda `P`, sol kütüphaneyi koruyarak sağ paneli çalma listelerine geçirir. `Enter` ile bir liste yüklendiğinde sağ panel yeniden çalma sırasını gösterir. `Esc` veya `P`, liste görünümünü kapatıp önceki odağa döner. Dar ekranda çalma listeleri tek panel olarak açılır.
-
-Aynı adda bir liste varsa üzerine yazmadan önce onay istenir. Artık kütüphanede bulunmayan yollar yükleme sırasında atlanır. Çalma listesi dosyası geçersizse özgün dosya `.corrupt-TARİH` uzantılı bir yedeğe taşınır; hata mesajı yedeğin tam konumunu gösterir.
+Çalan parça sıradan çıkarıldığında kesilmez. Aynı adda bir çalma listesi varsa üzerine yazmadan önce onay istenir; artık kütüphanede bulunmayan yollar yükleme sırasında atlanır. Geçersiz bir çalma listesi dosyası, silinmek yerine `.corrupt-TARİH` uzantısıyla yedeklenir.
 
 ## Arayüz davranışı
 
@@ -252,7 +210,7 @@ mpv --no-config --version
 
 ### Desteklenen ses dosyası bulunamadı
 
-Açıkça doğru klasörü verin:
+Doğru klasörü açıkça belirtin:
 
 ```bash
 kaset /müzik/klasörü
@@ -268,7 +226,7 @@ Hata mesajındaki `.corrupt-TARİH` dosyası özgün veriyi içerir. Dosyayı d�
 
 ### Uygulama kapandıktan sonra ses devam ediyor
 
-Çalıştırdığınız komutun güncel binary'yi gösterdiğini kontrol edin:
+Çalıştırdığınız komutun güncel çalıştırılabilir dosyayı gösterdiğini kontrol edin:
 
 ```bash
 readlink -f "$(command -v kaset)"

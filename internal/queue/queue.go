@@ -6,7 +6,7 @@ import "math/rand"
 type Queue struct {
 	items        []int
 	position     int
-	detachedNext int
+	detachedNext int // Playback boundary retained after the active item is removed.
 }
 
 // New returns an empty queue with no active item.
@@ -176,6 +176,7 @@ func (q *Queue) Clear() {
 	q.detachedNext = -1
 }
 
+// movedBoundary keeps a detached playback boundary stable while items move around it.
 func movedBoundary(boundary, from, to int) int {
 	switch {
 	case from < boundary && to >= boundary:

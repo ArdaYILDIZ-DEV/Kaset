@@ -9,6 +9,7 @@ import (
 	"kaset/internal/player"
 )
 
+// playLibraryContext replaces the queue with visible results and starts at the cursor.
 func (m *Model) playLibraryContext() {
 	if len(m.filtered) == 0 {
 		m.setError("Arama sonucunda çalınacak parça yok")
@@ -68,6 +69,7 @@ func (m *Model) removeQueueItem() {
 	m.setNotice("Parça çalma sırasından çıkarıldı")
 }
 
+// playQueueAt marks a queue item active only after mpv accepts the track.
 func (m *Model) playQueueAt(position int) bool {
 	trackIndex, ok := m.queue.ItemAt(position)
 	if !ok {
@@ -82,6 +84,7 @@ func (m *Model) playQueueAt(position int) bool {
 	return true
 }
 
+// playTrack clears stale metadata when loading a new library track.
 func (m *Model) playTrack(trackIndex int) bool {
 	if m.player == nil {
 		m.setError("mpv bağlantısı kapalı")
@@ -176,6 +179,7 @@ func (m *Model) handlePlayerEvent(event player.Event) {
 	}
 }
 
+// handleEndFile applies error skipping, track looping, and queue repeat rules.
 func (m *Model) handleEndFile(event player.Event) {
 	if event.Reason == "error" {
 		failed := m.title
@@ -217,6 +221,7 @@ func (m *Model) handleEndFile(event player.Event) {
 	m.position = m.duration
 }
 
+// handleProperty mirrors observed mpv state into fields used by the view.
 func (m *Model) handleProperty(name string, data any) {
 	switch name {
 	case "time-pos":
