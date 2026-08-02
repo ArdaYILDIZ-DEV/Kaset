@@ -408,8 +408,38 @@ func TestHelpAndWideLayout(t *testing.T) {
 		t.Fatalf("wide view does not contain both panels: %q", view)
 	}
 	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
-	if !model.helpVisible || !strings.Contains(model.View(), "YARDIM") {
-		t.Fatal("help view did not open")
+	if !model.helpVisible || !strings.Contains(model.View(), "YARDIM") || !strings.Contains(model.View(), "Tab odağı") {
+		t.Fatal("help view did not open with focus instructions")
+	}
+}
+
+func TestWideLayoutTabChangesVisiblePanelFocus(t *testing.T) {
+	model := New([]library.Track{
+		{Name: "Library Track", Path: "/music/library.mp3"},
+		{Name: "Queued Track", Path: "/music/queued.mp3"},
+	}, nil)
+	model.queue.Append(1)
+	model.width = 120
+	model.height = 24
+
+	view := model.View()
+	if !strings.Contains(view, "● KÜTÜPHANE") || !strings.Contains(view, "○ ÇALMA SIRASI") {
+		t.Fatalf("library focus is not visible: %q", view)
+	}
+	if got := strings.Count(view, "> "); got != 1 {
+		t.Fatalf("active cursor count = %d, want 1", got)
+	}
+
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyTab})
+	view = model.View()
+	if model.panel != panelQueue || !strings.Contains(view, "○ KÜTÜPHANE") || !strings.Contains(view, "● ÇALMA SIRASI") {
+		t.Fatalf("queue focus is not visible: panel=%v view=%q", model.panel, view)
+	}
+	if got := strings.Count(view, "> "); got != 1 {
+		t.Fatalf("active cursor count after Tab = %d, want 1", got)
+	}
+	if !strings.Contains(model.noticeText, "Odak: Çalma sırası") || !strings.Contains(view, "Tab → kütüphane") {
+		t.Fatalf("focus guidance missing: notice=%q view=%q", model.noticeText, view)
 	}
 }
 

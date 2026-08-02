@@ -108,6 +108,16 @@ func (m Model) wideLibraryQueueView(width, available int) []string {
 	return lines
 }
 
+func (m Model) panelHeader(title string, panel panelKind, width int) string {
+	if m.width < 100 || m.panel == panelPlaylists {
+		return accentStyle.Render(truncate(title, width))
+	}
+	if m.panel == panel {
+		return accentStyle.Render(truncate("● "+title, width))
+	}
+	return dimStyle.Render(truncate("○ "+title, width))
+}
+
 func (m Model) libraryView(width, available int) []string {
 	if available <= 0 {
 		return nil
@@ -117,7 +127,7 @@ func (m Model) libraryView(width, available int) []string {
 	if m.search.Value() != "" {
 		count = fmt.Sprintf("KÜTÜPHANE  %d/%d parça", len(m.filtered), len(m.tracks))
 	}
-	lines := []string{accentStyle.Render(truncate(count, width))}
+	lines := []string{m.panelHeader(count, panelLibrary, width)}
 	available--
 
 	if available > 0 && (m.searching || m.search.Value() != "") {
@@ -146,7 +156,7 @@ func (m Model) libraryView(width, available int) []string {
 	for visibleIndex := start; visibleIndex < end; visibleIndex++ {
 		trackIndex := m.filtered[visibleIndex]
 		cursor := "  "
-		if visibleIndex == m.cursor {
+		if visibleIndex == m.cursor && m.panel == panelLibrary {
 			cursor = "> "
 		}
 		playing := "  "
@@ -163,7 +173,7 @@ func (m Model) libraryView(width, available int) []string {
 		switch {
 		case trackIndex == m.current:
 			line = activeStyle.Render(line)
-		case visibleIndex == m.cursor:
+		case visibleIndex == m.cursor && m.panel == panelLibrary:
 			line = cursorStyle.Bold(true).Render(line)
 		default:
 			line = dimStyle.Render(line)
@@ -182,7 +192,7 @@ func (m Model) queueView(width, available int) []string {
 	if m.loadedPlaylist != "" {
 		header = fmt.Sprintf("ÇALMA SIRASI  %s  ·  %d", m.loadedPlaylist, m.queue.Len())
 	}
-	lines := []string{accentStyle.Render(truncate(header, width))}
+	lines := []string{m.panelHeader(header, panelQueue, width)}
 	available--
 	if available <= 0 {
 		return lines
@@ -198,7 +208,7 @@ func (m Model) queueView(width, available int) []string {
 			continue
 		}
 		cursor := "  "
-		if position == m.queueCursor {
+		if position == m.queueCursor && m.panel == panelQueue {
 			cursor = "> "
 		}
 		playing := "  "
@@ -211,7 +221,7 @@ func (m Model) queueView(width, available int) []string {
 		switch {
 		case position == m.queue.Position() && trackIndex == m.current:
 			line = activeStyle.Render(line)
-		case position == m.queueCursor:
+		case position == m.queueCursor && m.panel == panelQueue:
 			line = cursorStyle.Bold(true).Render(line)
 		default:
 			line = dimStyle.Render(line)
@@ -308,7 +318,8 @@ func (m Model) helpView(width, available int) []string {
 		"+/- ses   m sessiz   s durdur",
 		"j/k veya ↑/↓ gezin   g/G başa/sona git   Enter seç",
 		"a seçileni ekle   A görünenleri ekle   / ara   r yenile",
-		"Tab kütüphane/sıra   P çalma listeleri   S kaydet",
+		"Tab odağı kütüphane ve çalma sırası arasında değiştirir",
+		"P çalma listeleri   S kaydet",
 		"J/K sırada taşı   x kaldır/sil   c sırayı temizle",
 		"t paneli gizle   ?/Esc yardımı kapat   q çık",
 	}
@@ -409,18 +420,18 @@ func (m Model) helpText(width int) string {
 		return "Arama yaz  Enter/Esc bitir  Esc tekrar temizle"
 	}
 	if width < 24 {
-		return "Space n/p l R z ? q"
+		return "Space n/p Tab ? q"
 	}
 	if width < 52 {
-		return "Space n/p  l/R döngü  z karıştır  Tab panel  ? yardım  q"
+		return "Space n/p  l/R döngü  z karıştır  Tab geçiş  ? yardım  q"
 	}
 	switch m.panel {
 	case panelQueue:
-		return "Enter oynat  J/K taşı  x çıkar  c temizle  z karıştır  l/R döngü  Tab kütüphane  ? yardım  q"
+		return "Enter oynat  J/K taşı  x çıkar  c temizle  z karıştır  l/R döngü  Tab → kütüphane  ? yardım  q"
 	case panelPlaylists:
 		return "Enter sıraya yükle  x sil  P/Esc kapat  Space n/p  l/R döngü  ? yardım  q"
 	default:
-		return "Enter sırayı çal  a/A ekle  / ara  r yenile  Tab sıra  P listeler  S kaydet  ? yardım  q"
+		return "Enter sırayı çal  a/A ekle  / ara  r yenile  Tab → çalma sırası  P listeler  S kaydet  ? yardım  q"
 	}
 }
 

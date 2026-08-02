@@ -119,7 +119,7 @@ Desteklenen bir ses dosyası bulunamazsa uygulama hata mesajıyla kapanır. Bir 
 | `Esc`                  | Aramayı kapat; tekrar basıldığında sorguyu temizle  |
 | `r`                    | Kütüphaneyi yeniden tara                            |
 | `t`                    | Ana paneli gizle veya göster                        |
-| `Tab`                  | Kütüphane ve çalma sırası arasında geçiş yap        |
+| `Tab`                  | Odağı kütüphane ve çalma sırası arasında değiştir   |
 | `?`                    | Yardım ekranını aç veya kapat                       |
 
 ### Çalma sırası
@@ -133,7 +133,7 @@ Desteklenen bir ses dosyası bulunamazsa uygulama hata mesajıyla kapanır. Bir 
 | `x`                    | Seçili parçayı sıradan çıkar          |
 | `c`                    | Sırayı temizle                        |
 | `S`                    | Sırayı çalma listesi olarak kaydet    |
-| `Tab`                  | Kütüphaneye dön                       |
+| `Tab`                  | Odağı kütüphaneye taşı                |
 
 Çalan parça sıradan çıkarıldığında kesilmez. Parça bittikten sonra, kaldırılmadan önce arkasında bulunan parçayla devam edilir.
 
@@ -152,7 +152,7 @@ Aynı adda bir liste varsa üzerine yazmadan önce onay istenir. Artık kütüph
 
 ## Arayüz davranışı
 
-Terminal en az 100 hücre genişliğindeyse kütüphane ve çalma sırası yan yana gösterilir. Daha dar terminallerde `Tab` ile değiştirilen tek panel düzeni kullanılır. Dosya ve metadata metinleri terminal hücre genişliğine göre kesilir; geniş karakterler ve emojiler satırı taşırmaz.
+Terminal en az 100 hücre genişliğindeyse kütüphane ve çalma sırası yan yana gösterilir. `●` işareti ve parlak başlık aktif paneli, `○` işareti ve soluk başlık pasif paneli belirtir. Seçim oku yalnızca aktif panelde görünür; `Tab` odağı paneller arasında değiştirir. Daha dar terminallerde aynı tuşla değiştirilen tek panel düzeni kullanılır. Dosya ve metadata metinleri terminal hücre genişliğine göre kesilir; geniş karakterler ve emojiler satırı taşırmaz.
 
 Kütüphanedeki aynı adlı parçaları ayırt etmek için parça adının yanında göreli klasör yolu gösterilir.
 

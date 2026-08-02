@@ -261,8 +261,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.libraryVisible = true
 		if m.panel == panelLibrary {
 			m.panel = panelQueue
+			m.setNotice("Odak: Çalma sırası")
 		} else {
 			m.panel = panelLibrary
+			m.setNotice("Odak: Kütüphane")
 		}
 	case "P":
 		if m.panel == panelPlaylists {
