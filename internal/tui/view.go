@@ -72,8 +72,12 @@ func (m Model) View() string {
 }
 
 func (m Model) panelView(width, available int) []string {
-	if width >= 100 && m.panel != panelPlaylists {
-		return m.wideLibraryQueueView(width, available)
+	if width >= 100 {
+		rightPanel := panelQueue
+		if m.panel == panelPlaylists {
+			rightPanel = panelPlaylists
+		}
+		return m.wideLibraryView(width, available, rightPanel)
 	}
 	switch m.panel {
 	case panelQueue:
@@ -85,15 +89,20 @@ func (m Model) panelView(width, available int) []string {
 	}
 }
 
-func (m Model) wideLibraryQueueView(width, available int) []string {
+func (m Model) wideLibraryView(width, available int, rightPanel panelKind) []string {
 	contentWidth := max(2, width-3)
 	leftWidth := contentWidth * 3 / 5
 	rightWidth := contentWidth - leftWidth
 	left := m.libraryView(leftWidth, available)
-	right := m.queueView(rightWidth, available)
+	var right []string
+	if rightPanel == panelPlaylists {
+		right = m.playlistsView(rightWidth, available)
+	} else {
+		right = m.queueView(rightWidth, available)
+	}
 	rows := min(available, max(len(left), len(right)))
 	lines := make([]string, 0, rows)
-	divider := dimStyle.Render(" │ ")
+	divider := dividerStyle.Render(" │ ")
 	for row := 0; row < rows; row++ {
 		leftLine := ""
 		if row < len(left) {
@@ -109,7 +118,7 @@ func (m Model) wideLibraryQueueView(width, available int) []string {
 }
 
 func (m Model) panelHeader(title string, panel panelKind, width int) string {
-	if m.width < 100 || m.panel == panelPlaylists {
+	if m.width < 100 {
 		return accentStyle.Render(truncate(title, width))
 	}
 	if m.panel == panel {
@@ -235,7 +244,8 @@ func (m Model) playlistsView(width, available int) []string {
 	if available <= 0 {
 		return nil
 	}
-	lines := []string{accentStyle.Render(truncate(fmt.Sprintf("ÇALMA LİSTELERİ  %d", len(m.playlists)), width))}
+	header := fmt.Sprintf("ÇALMA LİSTELERİ  %d", len(m.playlists))
+	lines := []string{m.panelHeader(header, panelPlaylists, width)}
 	available--
 	if available <= 0 {
 		return lines

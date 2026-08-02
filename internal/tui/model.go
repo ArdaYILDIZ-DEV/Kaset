@@ -49,6 +49,7 @@ var (
 	errorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#FB7185"))
 	noticeStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#67E8F9"))
 	playingStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#C4B5FD"))
+	dividerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#4C4663"))
 )
 
 // Options configures optional model capabilities.

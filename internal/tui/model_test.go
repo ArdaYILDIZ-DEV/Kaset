@@ -443,6 +443,51 @@ func TestWideLayoutTabChangesVisiblePanelFocus(t *testing.T) {
 	}
 }
 
+func TestWidePlaylistsStayInRightPanelAndReturnToQueueAfterLoad(t *testing.T) {
+	store := playlist.NewStore(filepath.Join(t.TempDir(), "playlists.json"))
+	track := library.Track{Name: "Library Track", Path: "/music/track.mp3"}
+	if err := store.Save("Mix", []string{track.Path}, false); err != nil {
+		t.Fatal(err)
+	}
+	model := New([]library.Track{track}, nil, store)
+	model.width = 120
+	model.height = 24
+
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
+	view := model.View()
+	if model.panel != panelPlaylists || !strings.Contains(view, "○ KÜTÜPHANE") || !strings.Contains(view, "● ÇALMA LİSTELERİ") {
+		t.Fatalf("wide playlist panel is not visible beside library: panel=%v view=%q", model.panel, view)
+	}
+	if !strings.Contains(view, "Library Track") || strings.Contains(view, "ÇALMA SIRASI") {
+		t.Fatalf("unexpected wide playlist content: %q", view)
+	}
+
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyEnter})
+	view = model.View()
+	if model.panel != panelQueue || !strings.Contains(view, "○ KÜTÜPHANE") || !strings.Contains(view, "● ÇALMA SIRASI") {
+		t.Fatalf("queue did not replace playlists after load: panel=%v view=%q", model.panel, view)
+	}
+	if model.loadedPlaylist != "Mix" || !equalInts(model.queue.Items(), []int{0}) {
+		t.Fatalf("loaded=%q queue=%v", model.loadedPlaylist, model.queue.Items())
+	}
+}
+
+func TestNarrowPlaylistsKeepSinglePanelLayout(t *testing.T) {
+	store := playlist.NewStore(filepath.Join(t.TempDir(), "playlists.json"))
+	track := library.Track{Name: "Library Track", Path: "/music/track.mp3"}
+	if err := store.Save("Mix", []string{track.Path}, false); err != nil {
+		t.Fatal(err)
+	}
+	model := New([]library.Track{track}, nil, store)
+	model.width = 80
+	model.height = 24
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
+	view := model.View()
+	if !strings.Contains(view, "ÇALMA LİSTELERİ") || strings.Contains(view, "KÜTÜPHANE") {
+		t.Fatalf("narrow playlist view is not single-panel: %q", view)
+	}
+}
+
 func TestTruncateUsesTerminalCellWidth(t *testing.T) {
 	for width := 1; width <= 8; width++ {
 		if got := lipgloss.Width(truncate("你好🙂e\u0301", width)); got > width {

@@ -148,11 +148,13 @@ Desteklenen bir ses dosyası bulunamazsa uygulama hata mesajıyla kapanır. Bir 
 | `x`                    | Seçili liste için silme onayını aç                          |
 | `Esc`                  | Silme işlemini iptal et veya ekranı kapat                   |
 
+Geniş ekranda `P`, sol kütüphaneyi koruyarak sağ paneli çalma listelerine geçirir. `Enter` ile bir liste yüklendiğinde sağ panel yeniden çalma sırasını gösterir. `Esc` veya `P`, liste görünümünü kapatıp önceki odağa döner. Dar ekranda çalma listeleri tek panel olarak açılır.
+
 Aynı adda bir liste varsa üzerine yazmadan önce onay istenir. Artık kütüphanede bulunmayan yollar yükleme sırasında atlanır. Çalma listesi dosyası geçersizse özgün dosya `.corrupt-TARİH` uzantılı bir yedeğe taşınır; hata mesajı yedeğin tam konumunu gösterir.
 
 ## Arayüz davranışı
 
-Terminal en az 100 hücre genişliğindeyse kütüphane ve çalma sırası yan yana gösterilir. `●` işareti ve parlak başlık aktif paneli, `○` işareti ve soluk başlık pasif paneli belirtir. Seçim oku yalnızca aktif panelde görünür; `Tab` odağı paneller arasında değiştirir. Daha dar terminallerde aynı tuşla değiştirilen tek panel düzeni kullanılır. Dosya ve metadata metinleri terminal hücre genişliğine göre kesilir; geniş karakterler ve emojiler satırı taşırmaz.
+Terminal en az 100 hücre genişliğindeyse kütüphane solda, çalma sırası veya çalma listeleri sağda gösterilir. `●` işareti ve parlak başlık aktif paneli, `○` işareti ve soluk başlık pasif paneli belirtir. Seçim oku yalnızca aktif panelde görünür; `Tab` odağı kütüphane ve çalma sırası arasında değiştirir. Daha dar terminallerde aynı tuşla değiştirilen tek panel düzeni kullanılır. Dosya ve metadata metinleri terminal hücre genişliğine göre kesilir; geniş karakterler ve emojiler satırı taşırmaz.
 
 Kütüphanedeki aynı adlı parçaları ayırt etmek için parça adının yanında göreli klasör yolu gösterilir.
 
