@@ -90,7 +90,7 @@ func (m Model) panelView(width, available int) []string {
 	}
 }
 
-// wideLibraryView gives the library three fifths of the split layout.
+// wideLibraryView gives the library three fifths of the split layout and fills its height.
 func (m Model) wideLibraryView(width, available int, rightPanel panelKind) []string {
 	contentWidth := max(2, width-3)
 	leftWidth := contentWidth * 3 / 5
@@ -102,7 +102,7 @@ func (m Model) wideLibraryView(width, available int, rightPanel panelKind) []str
 	} else {
 		right = m.queueView(rightWidth, available)
 	}
-	rows := min(available, max(len(left), len(right)))
+	rows := available
 	lines := make([]string, 0, rows)
 	divider := dividerStyle.Render(" │ ")
 	for row := 0; row < rows; row++ {

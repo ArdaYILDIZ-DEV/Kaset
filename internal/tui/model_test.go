@@ -423,6 +423,22 @@ func TestHelpAndWideLayout(t *testing.T) {
 	}
 }
 
+func TestWideLayoutFillsAvailableRowsWithDivider(t *testing.T) {
+	model := New([]library.Track{{Name: "Track", Path: "/music/track.mp3"}}, nil)
+	model.width = 120
+
+	const available = 8
+	lines := model.wideLibraryView(model.width, available, panelQueue)
+	if len(lines) != available {
+		t.Fatalf("wide layout rows = %d, want %d", len(lines), available)
+	}
+	for row, line := range lines {
+		if !strings.Contains(line, "│") {
+			t.Fatalf("wide layout row %d has no divider: %q", row, line)
+		}
+	}
+}
+
 func TestWideLayoutTabChangesVisiblePanelFocus(t *testing.T) {
 	model := New([]library.Track{
 		{Name: "Library Track", Path: "/music/library.mp3"},
