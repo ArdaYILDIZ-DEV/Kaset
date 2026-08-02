@@ -16,13 +16,13 @@ func (m Model) View() string {
 	width := max(1, m.width)
 	height := max(1, m.height)
 	if height == 1 {
-		return accentStyle.Render(truncate(appName, width))
+		return m.startupLogo(width)
 	}
 
 	footer := dimStyle.Render(truncate(m.helpText(width), width))
 	bodyLimit := height - 1
 	lines := make([]string, 0, height)
-	lines = append(lines, accentStyle.Render(truncate(appName, width)))
+	lines = append(lines, m.startupLogo(width))
 
 	title, metadata := m.nowPlayingText()
 	if height >= 3 && len(lines) < bodyLimit {
@@ -69,6 +69,21 @@ func (m Model) View() string {
 	}
 	lines = append(lines, footer)
 	return strings.Join(lines[:height], "\n")
+}
+
+// startupLogo sweeps the accent color from left to right across the name.
+func (m Model) startupLogo(width int) string {
+	name := truncate(appName, width)
+	var result strings.Builder
+	for index, character := range []rune(name) {
+		styleIndex := startupLogoStyleIndex(m.startupFrame, index)
+		result.WriteString(startupLogoStyles[styleIndex].Render(string(character)))
+	}
+	return result.String()
+}
+
+func startupLogoStyleIndex(frame, letter int) int {
+	return min(len(startupLogoStyles)-1, max(0, 2*frame-letter))
 }
 
 // panelView chooses a split or single-panel layout based on terminal width.

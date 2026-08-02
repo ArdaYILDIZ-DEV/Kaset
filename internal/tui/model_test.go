@@ -16,6 +16,39 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+func TestStartupLogoAnimationSettlesOnAccentColor(t *testing.T) {
+	model := New([]library.Track{{Name: "Track", Path: "/track.mp3"}}, nil)
+	for letter := range []rune(appName) {
+		if got := startupLogoStyleIndex(model.startupFrame, letter); got != 0 {
+			t.Fatalf("initial logo style %d = %d, want 0", letter, got)
+		}
+	}
+	for letter, want := range []int{4, 3, 2, 1, 0} {
+		if got := startupLogoStyleIndex(2, letter); got != want {
+			t.Fatalf("middle logo style %d = %d, want %d", letter, got, want)
+		}
+	}
+
+	for frame := 1; frame <= startupAnimationLastFrame; frame++ {
+		updated, cmd := model.Update(startupTickMsg{})
+		model = updated.(Model)
+		if model.startupFrame != frame {
+			t.Fatalf("startup frame = %d, want %d", model.startupFrame, frame)
+		}
+		if frame < startupAnimationLastFrame && cmd == nil {
+			t.Fatalf("startup frame %d did not schedule the next frame", frame)
+		}
+		if frame == startupAnimationLastFrame && cmd != nil {
+			t.Fatal("final startup frame scheduled another frame")
+		}
+	}
+	for letter := range []rune(appName) {
+		if got := startupLogoStyleIndex(model.startupFrame, letter); got != len(startupLogoStyles)-1 {
+			t.Fatalf("final logo style %d = %d", letter, got)
+		}
+	}
+}
+
 func TestInitialVolumeOption(t *testing.T) {
 	volume := 42.0
 	model := NewWithOptions([]library.Track{{Name: "Track", Path: "/track.mp3"}}, nil, Options{

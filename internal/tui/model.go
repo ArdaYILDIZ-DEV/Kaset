@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"time"
+
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -12,7 +14,11 @@ import (
 	playqueue "kaset/internal/queue"
 )
 
-const appName = "KASET"
+const (
+	appName                   = "KASET"
+	startupAnimationStep      = 140 * time.Millisecond
+	startupAnimationLastFrame = 4
+)
 
 type panelKind uint8
 
@@ -43,7 +49,14 @@ type playbackController interface {
 }
 
 var (
-	accentStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#A78BFA"))
+	accentStyle       = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#A78BFA"))
+	startupLogoStyles = [...]lipgloss.Style{
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#4C4663")),
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#65577F")),
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#7E689B")),
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#9378B8")),
+		accentStyle,
+	}
 	dimStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#71717A"))
 	activeStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#34D399"))
 	cursorStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#F4F4F5"))
@@ -102,10 +115,12 @@ type Model struct {
 	errText        string
 	noticeText     string
 	progress       progress.Model
+	startupFrame   int
 }
 
 type playerEventMsg player.Event
 type playerClosedMsg struct{}
+type startupTickMsg struct{}
 
 // New creates a model while preserving the original focused-test API.
 func New(tracks []library.Track, mpv playbackController, stores ...*playlist.Store) Model {
@@ -171,12 +186,13 @@ func NewWithOptions(tracks []library.Track, mpv playbackController, options Opti
 	}
 }
 
-// Init starts listening for mpv events.
+// Init starts the logo animation and begins listening for mpv events.
 func (m Model) Init() tea.Cmd {
+	animation := startupAnimationTick()
 	if m.player == nil {
-		return nil
+		return animation
 	}
-	return waitForPlayerEvent(m.player.Events())
+	return tea.Batch(animation, waitForPlayerEvent(m.player.Events()))
 }
 
 // Volume returns the most recently observed playback volume.
@@ -192,6 +208,15 @@ func (m Model) ShowFolders() bool {
 // Update handles terminal input and asynchronous application events.
 func (m Model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := message.(type) {
+	case startupTickMsg:
+		if m.startupFrame >= startupAnimationLastFrame {
+			return m, nil
+		}
+		m.startupFrame++
+		if m.startupFrame == startupAnimationLastFrame {
+			return m, nil
+		}
+		return m, startupAnimationTick()
 	case tea.WindowSizeMsg:
 		m.width = max(1, msg.Width)
 		m.height = max(1, msg.Height)
@@ -432,6 +457,13 @@ func (m *Model) setNotice(message string) {
 func (m *Model) clearFeedback() {
 	m.errText = ""
 	m.noticeText = ""
+}
+
+// startupAnimationTick schedules the next color step without blocking input.
+func startupAnimationTick() tea.Cmd {
+	return tea.Tick(startupAnimationStep, func(time.Time) tea.Msg {
+		return startupTickMsg{}
+	})
 }
 
 // waitForPlayerEvent subscribes to one event at a time in Bubble Tea's command model.
