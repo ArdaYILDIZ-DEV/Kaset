@@ -1,7 +1,9 @@
-# KASET
+<p align="center">
+  <img src="docs/images/kaset-logo.svg" alt="KASET" width="520">
+</p>
 
 <p align="center">
-  <strong>vi tarzı tuşlarla çalışan, Türkçe karakterlere duyarlı anlık arama sunan terminal müzik oynatıcı.</strong>
+  <strong>Hızlı arama ve vi tarzı kontroller sunan klavye odaklı müzik oynatıcı.</strong>
 </p>
 
 <p align="center">

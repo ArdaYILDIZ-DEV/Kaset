@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="180" viewBox="0 0 560 180" role="img" aria-labelledby="title desc">
+  <title id="title">KASET</title>
+  <desc id="desc">wordmark</desc>
+
+  <defs>
+    <linearGradient id="violet-sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4C4663"/>
+      <stop offset="0.5" stop-color="#7E689B"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+  </defs>
+
+  <g fill="none" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M18 42H142V138H18Z" stroke="url(#violet-sweep)" stroke-width="5"/>
+    <path d="M32 57H128V111H32Z" stroke="#A78BFA" stroke-width="3"/>
+    <path d="M32 69H128" stroke="#65577F" stroke-width="3"/>
+
+    <circle cx="53" cy="89" r="12" stroke="#A78BFA" stroke-width="4"/>
+    <circle cx="107" cy="89" r="12" stroke="#A78BFA" stroke-width="4"/>
+    <circle cx="53" cy="89" r="3" fill="#A78BFA" stroke="none"/>
+    <circle cx="107" cy="89" r="3" fill="#A78BFA" stroke="none"/>
+    <path d="M65 89H95" stroke="#9378B8" stroke-width="3"/>
+
+    <path d="M43 121H117L126 138H34Z" stroke="#7E689B" stroke-width="3"/>
+    <path d="M56 128H104" stroke="#A78BFA" stroke-width="3"/>
+  </g>
+
+  <g fill="#A78BFA"
+     font-family="Noto Sans Mono, DejaVu Sans Mono, Consolas, monospace"
+     font-size="86"
+     font-weight="800">
+    <text x="178" y="121">K</text>
+    <text x="242" y="121">A</text>
+    <text x="306" y="121">S</text>
+    <text x="370" y="121">E</text>
+    <text x="434" y="121">T</text>
+  </g>
+
+  <g fill="#A78BFA">
+    <rect x="184" y="140" width="10" height="4"/>
+    <rect x="202" y="140" width="292" height="4" opacity="0.35"/>
+  </g>
+</svg>
