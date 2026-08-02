@@ -414,7 +414,7 @@ func TestHelpAndWideLayout(t *testing.T) {
 		t.Fatalf("folder details are visible by default: %q", view)
 	}
 	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
-	if !model.ShowFolders() || !strings.Contains(model.View(), "Album") || !strings.Contains(model.noticeText, "gösteriliyor") {
+	if !model.ShowFolders() || !strings.Contains(model.View(), "Track :: Album") || !strings.Contains(model.noticeText, "gösteriliyor") {
 		t.Fatalf("folder details did not become visible: show=%v notice=%q view=%q", model.ShowFolders(), model.noticeText, model.View())
 	}
 	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})

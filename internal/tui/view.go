@@ -177,7 +177,7 @@ func (m Model) libraryView(width, available int) []string {
 		nameWidth := max(1, width-10)
 		label := m.tracks[trackIndex].Name
 		if m.showFolders && m.tracks[trackIndex].Folder != "" {
-			label += " · " + m.tracks[trackIndex].Folder
+			label += " :: " + m.tracks[trackIndex].Folder
 		}
 		line := fmt.Sprintf("%s%s%3d  %s", cursor, playing, trackIndex+1, truncate(sanitize(label), nameWidth))
 		line = truncate(line, width)
