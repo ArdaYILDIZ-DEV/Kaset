@@ -124,7 +124,7 @@ func TestDefaultStoreUsesKasetConfigPath(t *testing.T) {
 	}
 }
 
-func TestRejectsInvalidData(t *testing.T) {
+func TestRejectsInvalidInputAndRecoversInvalidFile(t *testing.T) {
 	store := NewStore(filepath.Join(t.TempDir(), "playlists.json"))
 	if err := store.Save("  ", []string{"track.mp3"}, false); err == nil {
 		t.Fatal("Save() accepted an empty name")
@@ -136,7 +136,43 @@ func TestRejectsInvalidData(t *testing.T) {
 	if err := os.WriteFile(store.Path(), []byte(`{"version":99,"playlists":[]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.List(); err == nil {
-		t.Fatal("List() accepted an unsupported version")
+	_, err := store.List()
+	var recovery *RecoveryError
+	if !errors.As(err, &recovery) {
+		t.Fatalf("List() error = %v, want RecoveryError", err)
+	}
+	if _, err := os.Stat(recovery.BackupPath); err != nil {
+		t.Fatalf("recovery backup missing: %v", err)
+	}
+	items, err := store.List()
+	if err != nil || len(items) != 0 {
+		t.Fatalf("List() after recovery = %#v, %v", items, err)
+	}
+}
+
+func TestConcurrentSavesDoNotLoseUpdates(t *testing.T) {
+	store := NewStore(filepath.Join(t.TempDir(), "playlists.json"))
+	track := filepath.Join(t.TempDir(), "track.mp3")
+	start := make(chan struct{})
+	errorsCh := make(chan error, 2)
+	for _, name := range []string{"One", "Two"} {
+		name := name
+		go func() {
+			<-start
+			errorsCh <- store.Save(name, []string{track}, false)
+		}()
+	}
+	close(start)
+	for range 2 {
+		if err := <-errorsCh; err != nil {
+			t.Fatal(err)
+		}
+	}
+	items, err := store.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("List() = %#v, want both concurrent saves", items)
 	}
 }

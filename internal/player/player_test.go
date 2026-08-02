@@ -14,6 +14,19 @@ import (
 	"time"
 )
 
+func TestTailBufferKeepsBoundedSuffix(t *testing.T) {
+	buffer := &tailBuffer{limit: 5}
+	if _, err := buffer.Write([]byte("1234")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := buffer.Write([]byte("567")); err != nil {
+		t.Fatal(err)
+	}
+	if got := buffer.String(); got != "34567" {
+		t.Fatalf("String() = %q", got)
+	}
+}
+
 func TestDecodePropertyChange(t *testing.T) {
 	event, ok := decodeMessage([]byte(`{"event":"property-change","name":"volume","data":42.5}`))
 	if !ok {
@@ -25,9 +38,19 @@ func TestDecodePropertyChange(t *testing.T) {
 }
 
 func TestDecodeEndFile(t *testing.T) {
-	event, ok := decodeMessage([]byte(`{"event":"end-file","reason":"eof"}`))
-	if !ok || event.Type != EventEndFile || event.Reason != "eof" {
+	event, ok := decodeMessage([]byte(`{"event":"end-file","reason":"error","file_error":"unrecognized file format"}`))
+	if !ok || event.Type != EventEndFile || event.Reason != "error" || event.FileError != "unrecognized file format" {
 		t.Fatalf("decodeMessage() = %#v, %v", event, ok)
+	}
+}
+
+func TestDecodeCommandResponse(t *testing.T) {
+	message, err := decodeIPCMessage([]byte(`{"request_id":12,"error":"success"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if message.RequestID != 12 || message.Error != "success" {
+		t.Fatalf("decodeIPCMessage() = %#v", message)
 	}
 }
 
@@ -48,6 +71,9 @@ func TestPlayerIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = mpv.Close() })
+	if err := mpv.SetVolume(37); err != nil {
+		t.Fatalf("SetVolume() error = %v", err)
+	}
 
 	track := writeSilentWAV(t)
 	if err := mpv.Load(track); err != nil {

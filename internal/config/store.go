@@ -1,0 +1,176 @@
+package config
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"math"
+	"os"
+	"path/filepath"
+	"time"
+
+	"golang.org/x/sys/unix"
+)
+
+const fileVersion = 1
+
+// Settings contains small pieces of state restored between sessions.
+type Settings struct {
+	Version int     `json:"version"`
+	Library string  `json:"library,omitempty"`
+	Volume  float64 `json:"volume"`
+}
+
+// RecoveryError reports that invalid settings were moved to a backup file.
+type RecoveryError struct {
+	BackupPath string
+	Cause      error
+}
+
+func (e *RecoveryError) Error() string {
+	return fmt.Sprintf("ayar dosyası geçersizdi ve %s konumuna yedeklendi: %v", e.BackupPath, e.Cause)
+}
+
+func (e *RecoveryError) Unwrap() error {
+	return e.Cause
+}
+
+// Store persists settings in the user's configuration directory.
+type Store struct {
+	path string
+}
+
+// DefaultStore returns the standard KASET settings store.
+func DefaultStore() (*Store, error) {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return nil, fmt.Errorf("kullanıcı yapılandırma klasörü bulunamadı: %w", err)
+	}
+	return NewStore(filepath.Join(configDir, "kaset", "settings.json")), nil
+}
+
+// NewStore creates a settings store backed by path.
+func NewStore(path string) *Store {
+	return &Store{path: path}
+}
+
+// Path returns the JSON file used by the store.
+func (s *Store) Path() string {
+	return s.path
+}
+
+// Defaults returns settings used when no persisted file exists.
+func Defaults() Settings {
+	return Settings{Version: fileVersion, Volume: 100}
+}
+
+// Load reads and validates persisted settings.
+func (s *Store) Load() (Settings, error) {
+	var settings Settings
+	err := s.withLock(func() error {
+		content, err := os.ReadFile(s.path)
+		if errors.Is(err, os.ErrNotExist) {
+			settings = Defaults()
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("ayar dosyası okunamadı: %w", err)
+		}
+		if err := json.Unmarshal(content, &settings); err != nil {
+			return s.recoverInvalid(fmt.Errorf("JSON çözümlenemedi: %w", err))
+		}
+		if err := validate(settings); err != nil {
+			return s.recoverInvalid(err)
+		}
+		return nil
+	})
+	if err != nil {
+		return Defaults(), err
+	}
+	return settings, nil
+}
+
+// Save atomically persists validated settings.
+func (s *Store) Save(settings Settings) error {
+	settings.Version = fileVersion
+	if settings.Library != "" {
+		absolute, err := filepath.Abs(settings.Library)
+		if err != nil {
+			return fmt.Errorf("müzik klasörü çözümlenemedi: %w", err)
+		}
+		settings.Library = filepath.Clean(absolute)
+	}
+	settings.Volume = math.Max(0, math.Min(100, settings.Volume))
+	if err := validate(settings); err != nil {
+		return err
+	}
+
+	return s.withLock(func() error {
+		directory := filepath.Dir(s.path)
+		temporary, err := os.CreateTemp(directory, ".settings-*.tmp")
+		if err != nil {
+			return fmt.Errorf("geçici ayar dosyası oluşturulamadı: %w", err)
+		}
+		temporaryPath := temporary.Name()
+		defer os.Remove(temporaryPath)
+
+		encoder := json.NewEncoder(temporary)
+		encoder.SetIndent("", "  ")
+		if err := encoder.Encode(settings); err != nil {
+			_ = temporary.Close()
+			return fmt.Errorf("ayarlar kodlanamadı: %w", err)
+		}
+		if err := temporary.Sync(); err != nil {
+			_ = temporary.Close()
+			return fmt.Errorf("ayarlar diske yazılamadı: %w", err)
+		}
+		if err := temporary.Close(); err != nil {
+			return fmt.Errorf("ayar dosyası kapatılamadı: %w", err)
+		}
+		if err := os.Rename(temporaryPath, s.path); err != nil {
+			return fmt.Errorf("ayar dosyası değiştirilemedi: %w", err)
+		}
+		return nil
+	})
+}
+
+func (s *Store) withLock(action func() error) error {
+	directory := filepath.Dir(s.path)
+	if err := os.MkdirAll(directory, 0o700); err != nil {
+		return fmt.Errorf("ayar klasörü oluşturulamadı: %w", err)
+	}
+	if err := os.Chmod(directory, 0o700); err != nil {
+		return fmt.Errorf("ayar klasörü izinleri ayarlanamadı: %w", err)
+	}
+	lock, err := os.OpenFile(s.path+".lock", os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return fmt.Errorf("ayar kilidi açılamadı: %w", err)
+	}
+	defer lock.Close()
+	if err := unix.Flock(int(lock.Fd()), unix.LOCK_EX); err != nil {
+		return fmt.Errorf("ayar dosyası kilitlenemedi: %w", err)
+	}
+	defer unix.Flock(int(lock.Fd()), unix.LOCK_UN)
+	return action()
+}
+
+func (s *Store) recoverInvalid(cause error) error {
+	backupPath := fmt.Sprintf("%s.corrupt-%s", s.path, time.Now().Format("20060102-150405.000000000"))
+	if err := os.Rename(s.path, backupPath); err != nil {
+		return fmt.Errorf("geçersiz ayar dosyası yedeklenemedi: %v; asıl hata: %w", err, cause)
+	}
+	return &RecoveryError{BackupPath: backupPath, Cause: cause}
+}
+
+func validate(settings Settings) error {
+	if settings.Version != fileVersion {
+		return fmt.Errorf("desteklenmeyen ayar dosyası sürümü: %d", settings.Version)
+	}
+	if settings.Library != "" && !filepath.IsAbs(settings.Library) {
+		return errors.New("kayıtlı müzik klasörü mutlak değil")
+	}
+	if math.IsNaN(settings.Volume) || math.IsInf(settings.Volume, 0) || settings.Volume < 0 || settings.Volume > 100 {
+		return fmt.Errorf("geçersiz ses seviyesi: %v", settings.Volume)
+	}
+	return nil
+}

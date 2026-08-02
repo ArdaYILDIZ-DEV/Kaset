@@ -11,8 +11,15 @@ import (
 
 // Track is a local audio file shown in the library.
 type Track struct {
+	Path   string
+	Name   string
+	Folder string
+}
+
+// ScanIssue describes a path that could not be visited during a partial scan.
+type ScanIssue struct {
 	Path string
-	Name string
+	Err  error
 }
 
 var supportedExtensions = map[string]struct{}{
@@ -29,23 +36,37 @@ var supportedExtensions = map[string]struct{}{
 
 // Scan recursively finds supported audio files under root.
 func Scan(root string) ([]Track, error) {
+	tracks, _, err := ScanWithIssues(root)
+	return tracks, err
+}
+
+// ScanWithIssues returns supported tracks and non-fatal traversal errors.
+func ScanWithIssues(root string) ([]Track, []ScanIssue, error) {
 	absoluteRoot, err := filepath.Abs(root)
 	if err != nil {
-		return nil, fmt.Errorf("müzik klasörü çözümlenemedi: %w", err)
+		return nil, nil, fmt.Errorf("müzik klasörü çözümlenemedi: %w", err)
 	}
 
 	info, err := os.Stat(absoluteRoot)
 	if err != nil {
-		return nil, fmt.Errorf("müzik klasörü açılamadı: %w", err)
+		return nil, nil, fmt.Errorf("müzik klasörü açılamadı: %w", err)
 	}
 	if !info.IsDir() {
-		return nil, fmt.Errorf("müzik yolu bir klasör değil: %s", absoluteRoot)
+		return nil, nil, fmt.Errorf("müzik yolu bir klasör değil: %s", absoluteRoot)
 	}
 
 	tracks := make([]Track, 0)
+	issues := make([]ScanIssue, 0)
 	err = filepath.WalkDir(absoluteRoot, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
-			return walkErr
+			if path == absoluteRoot {
+				return walkErr
+			}
+			issues = append(issues, ScanIssue{Path: path, Err: walkErr})
+			if entry != nil && entry.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
 		}
 		if !entry.Type().IsRegular() {
 			return nil
@@ -55,15 +76,21 @@ func Scan(root string) ([]Track, error) {
 		}
 
 		name := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
-		tracks = append(tracks, Track{Path: path, Name: name})
+		folder := filepath.Dir(path)
+		if relative, relativeErr := filepath.Rel(absoluteRoot, folder); relativeErr == nil && relative != "." {
+			folder = relative
+		} else {
+			folder = ""
+		}
+		tracks = append(tracks, Track{Path: path, Name: name, Folder: folder})
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("müzik klasörü taranamadı: %w", err)
+		return nil, issues, fmt.Errorf("müzik klasörü taranamadı: %w", err)
 	}
 
 	sort.Slice(tracks, func(i, j int) bool {
 		return strings.ToLower(tracks[i].Path) < strings.ToLower(tracks[j].Path)
 	})
-	return tracks, nil
+	return tracks, issues, nil
 }

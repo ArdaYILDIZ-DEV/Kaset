@@ -26,8 +26,40 @@ func TestScanFindsSupportedFilesRecursively(t *testing.T) {
 	if len(tracks) != 2 {
 		t.Fatalf("len(tracks) = %d, want 2", len(tracks))
 	}
-	if tracks[0].Name != "a" || tracks[1].Name != "b" {
-		t.Fatalf("track order/names = %#v", tracks)
+	if tracks[0].Name != "a" || tracks[0].Folder != "Albüm" || tracks[1].Name != "b" || tracks[1].Folder != "" {
+		t.Fatalf("track order/metadata = %#v", tracks)
+	}
+}
+
+func TestScanWithIssuesSkipsUnreadableSubdirectory(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root can read directories regardless of permission bits")
+	}
+	root := t.TempDir()
+	blocked := filepath.Join(root, "blocked")
+	if err := os.Mkdir(blocked, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(blocked, "hidden.mp3"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "visible.mp3"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(blocked, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(blocked, 0o700) })
+
+	tracks, issues, err := ScanWithIssues(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tracks) != 1 || tracks[0].Name != "visible" {
+		t.Fatalf("tracks = %#v", tracks)
+	}
+	if len(issues) != 1 || issues[0].Path != blocked {
+		t.Fatalf("issues = %#v", issues)
 	}
 }
 

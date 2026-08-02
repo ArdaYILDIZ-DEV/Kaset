@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"math/rand"
 	"reflect"
 	"testing"
 )
@@ -43,18 +44,49 @@ func TestMovePreservesActiveTrack(t *testing.T) {
 	}
 }
 
-func TestRemovingActiveMakesFollowingItemNext(t *testing.T) {
+func TestRemovingActiveDetachesPlaybackAndPreservesNavigation(t *testing.T) {
 	q := New()
 	q.Replace([]int{10, 20, 30}, 1)
 	removed, ok := q.Remove(1)
 	if !ok || removed != 20 {
 		t.Fatalf("Remove() = %d, %v", removed, ok)
 	}
+	if q.Position() != -1 {
+		t.Fatalf("Position() = %d, want detached playback", q.Position())
+	}
 	if next, ok := q.NextPosition(); !ok || next != 1 {
 		t.Fatalf("NextPosition() = %d, %v; want position 1", next, ok)
 	}
+	if previous, ok := q.PreviousPosition(); !ok || previous != 0 {
+		t.Fatalf("PreviousPosition() = %d, %v; want position 0", previous, ok)
+	}
 	if track, _ := q.ItemAt(1); track != 30 {
 		t.Fatalf("next track = %d, want 30", track)
+	}
+}
+
+func TestShuffleUpcomingPreservesHistoryAndActiveTrack(t *testing.T) {
+	q := New()
+	q.Replace([]int{10, 20, 30, 40, 50}, 1)
+	if !q.ShuffleUpcoming(rand.New(rand.NewSource(4))) {
+		t.Fatal("ShuffleUpcoming() = false")
+	}
+	items := q.Items()
+	if !reflect.DeepEqual(items[:2], []int{10, 20}) {
+		t.Fatalf("played prefix changed: %v", items)
+	}
+	if q.Position() != 1 {
+		t.Fatalf("Position() = %d, want 1", q.Position())
+	}
+	gotUpcoming := append([]int(nil), items[2:]...)
+	seen := map[int]bool{}
+	for _, item := range gotUpcoming {
+		seen[item] = true
+	}
+	for _, wanted := range []int{30, 40, 50} {
+		if !seen[wanted] {
+			t.Fatalf("shuffled items = %v, missing %d", items, wanted)
+		}
 	}
 }
 

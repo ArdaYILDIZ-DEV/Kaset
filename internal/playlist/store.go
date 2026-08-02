@@ -8,16 +8,33 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"golang.org/x/sys/unix"
 )
 
 const fileVersion = 1
 
 var (
-	ErrExists   = errors.New("playlist zaten var")
-	ErrNotFound = errors.New("playlist bulunamadı")
+	ErrExists   = errors.New("çalma listesi zaten var")
+	ErrNotFound = errors.New("çalma listesi bulunamadı")
 )
+
+// RecoveryError reports that invalid data was preserved under a backup path.
+type RecoveryError struct {
+	BackupPath string
+	Cause      error
+}
+
+func (e *RecoveryError) Error() string {
+	return fmt.Sprintf("çalma listesi dosyası geçersizdi ve %s konumuna yedeklendi: %v", e.BackupPath, e.Cause)
+}
+
+func (e *RecoveryError) Unwrap() error {
+	return e.Cause
+}
 
 // Playlist stores tracks as direct file paths in playback order.
 type Playlist struct {
@@ -45,8 +62,7 @@ func DefaultStore() (*Store, error) {
 	return NewStore(filepath.Join(configDir, "kaset", "playlists.json")), nil
 }
 
-// NewStore creates a store backed by path. It does not touch the filesystem
-// until a read or write operation is requested.
+// NewStore creates a store backed by path.
 func NewStore(path string) *Store {
 	return &Store{path: path}
 }
@@ -58,11 +74,18 @@ func (s *Store) Path() string {
 
 // List returns all playlists sorted by name.
 func (s *Store) List() ([]Playlist, error) {
-	data, err := s.read()
+	var playlists []Playlist
+	err := s.withLock(func() error {
+		data, err := s.read()
+		if err != nil {
+			return err
+		}
+		playlists = clonePlaylists(data.Playlists)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	playlists := clonePlaylists(data.Playlists)
 	sort.Slice(playlists, func(i, j int) bool {
 		return strings.ToLower(playlists[i].Name) < strings.ToLower(playlists[j].Name)
 	})
@@ -75,16 +98,21 @@ func (s *Store) Load(name string) (Playlist, error) {
 	if err != nil {
 		return Playlist{}, err
 	}
-	data, err := s.read()
-	if err != nil {
-		return Playlist{}, err
-	}
-	for _, item := range data.Playlists {
-		if item.Name == name {
-			return clonePlaylist(item), nil
+	var found Playlist
+	err = s.withLock(func() error {
+		data, err := s.read()
+		if err != nil {
+			return err
 		}
-	}
-	return Playlist{}, ErrNotFound
+		for _, item := range data.Playlists {
+			if item.Name == name {
+				found = clonePlaylist(item)
+				return nil
+			}
+		}
+		return ErrNotFound
+	})
+	return found, err
 }
 
 // Save creates or updates a playlist. Existing playlists are changed only when
@@ -94,43 +122,34 @@ func (s *Store) Save(name string, tracks []string, overwrite bool) error {
 	if err != nil {
 		return err
 	}
-	if len(tracks) == 0 {
-		return errors.New("boş çalma sırası kaydedilemez")
-	}
-
-	absoluteTracks := make([]string, 0, len(tracks))
-	for _, track := range tracks {
-		if strings.TrimSpace(track) == "" {
-			return errors.New("playlist boş dosya yolu içeremez")
-		}
-		absolute, err := filepath.Abs(track)
-		if err != nil {
-			return fmt.Errorf("parça yolu çözümlenemedi: %w", err)
-		}
-		absoluteTracks = append(absoluteTracks, filepath.Clean(absolute))
-	}
-
-	data, err := s.read()
+	absoluteTracks, err := validateTracks(tracks, false)
 	if err != nil {
 		return err
 	}
-	found := -1
-	for index, item := range data.Playlists {
-		if item.Name == name {
-			found = index
-			break
+
+	return s.withLock(func() error {
+		data, err := s.read()
+		if err != nil {
+			return err
 		}
-	}
-	updated := Playlist{Name: name, Tracks: absoluteTracks}
-	switch {
-	case found >= 0 && !overwrite:
-		return ErrExists
-	case found >= 0:
-		data.Playlists[found] = updated
-	default:
-		data.Playlists = append(data.Playlists, updated)
-	}
-	return s.write(data)
+		found := -1
+		for index, item := range data.Playlists {
+			if item.Name == name {
+				found = index
+				break
+			}
+		}
+		updated := Playlist{Name: name, Tracks: absoluteTracks}
+		switch {
+		case found >= 0 && !overwrite:
+			return ErrExists
+		case found >= 0:
+			data.Playlists[found] = updated
+		default:
+			data.Playlists = append(data.Playlists, updated)
+		}
+		return s.write(data)
+	})
 }
 
 // Delete permanently removes one named playlist.
@@ -139,53 +158,76 @@ func (s *Store) Delete(name string) error {
 	if err != nil {
 		return err
 	}
-	data, err := s.read()
-	if err != nil {
+	return s.withLock(func() error {
+		data, err := s.read()
+		if err != nil {
+			return err
+		}
+		for index, item := range data.Playlists {
+			if item.Name != name {
+				continue
+			}
+			data.Playlists = append(data.Playlists[:index], data.Playlists[index+1:]...)
+			return s.write(data)
+		}
+		return ErrNotFound
+	})
+}
+
+func (s *Store) withLock(action func() error) error {
+	directory := filepath.Dir(s.path)
+	if err := ensurePrivateDirectory(directory); err != nil {
 		return err
 	}
-	for index, item := range data.Playlists {
-		if item.Name != name {
-			continue
-		}
-		data.Playlists = append(data.Playlists[:index], data.Playlists[index+1:]...)
-		return s.write(data)
+	lock, err := os.OpenFile(s.path+".lock", os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return fmt.Errorf("çalma listesi kilidi açılamadı: %w", err)
 	}
-	return ErrNotFound
+	defer lock.Close()
+
+	if err := unix.Flock(int(lock.Fd()), unix.LOCK_EX); err != nil {
+		return fmt.Errorf("çalma listesi kilitlenemedi: %w", err)
+	}
+	defer unix.Flock(int(lock.Fd()), unix.LOCK_UN)
+	return action()
 }
 
 func (s *Store) read() (fileData, error) {
 	content, err := os.ReadFile(s.path)
 	if errors.Is(err, os.ErrNotExist) {
-		return fileData{Version: fileVersion, Playlists: []Playlist{}}, nil
+		return emptyFileData(), nil
 	}
 	if err != nil {
-		return fileData{}, fmt.Errorf("playlist dosyası okunamadı: %w", err)
+		return fileData{}, fmt.Errorf("çalma listesi dosyası okunamadı: %w", err)
 	}
 
 	var data fileData
 	if err := json.Unmarshal(content, &data); err != nil {
-		return fileData{}, fmt.Errorf("playlist dosyası geçersiz: %w", err)
+		return fileData{}, s.recoverInvalid(fmt.Errorf("JSON çözümlenemedi: %w", err))
 	}
-	if data.Version != fileVersion {
-		return fileData{}, fmt.Errorf("desteklenmeyen playlist dosya sürümü: %d", data.Version)
-	}
-	for _, item := range data.Playlists {
-		if _, err := validateName(item.Name); err != nil {
-			return fileData{}, fmt.Errorf("geçersiz kayıtlı playlist: %w", err)
-		}
+	if err := validateFileData(data); err != nil {
+		return fileData{}, s.recoverInvalid(err)
 	}
 	return data, nil
 }
 
+func (s *Store) recoverInvalid(cause error) error {
+	backupPath := fmt.Sprintf("%s.corrupt-%s", s.path, time.Now().Format("20060102-150405.000000000"))
+	if err := os.Rename(s.path, backupPath); err != nil {
+		return fmt.Errorf("geçersiz çalma listesi dosyası yedeklenemedi: %v; asıl hata: %w", err, cause)
+	}
+	return &RecoveryError{BackupPath: backupPath, Cause: cause}
+}
+
 func (s *Store) write(data fileData) error {
 	directory := filepath.Dir(s.path)
-	if err := os.MkdirAll(directory, 0o700); err != nil {
-		return fmt.Errorf("playlist klasörü oluşturulamadı: %w", err)
+	if err := ensurePrivateDirectory(directory); err != nil {
+		return err
 	}
 
 	temporary, err := os.CreateTemp(directory, ".playlists-*.tmp")
 	if err != nil {
-		return fmt.Errorf("geçici playlist dosyası oluşturulamadı: %w", err)
+		return fmt.Errorf("geçici çalma listesi dosyası oluşturulamadı: %w", err)
 	}
 	temporaryPath := temporary.Name()
 	defer os.Remove(temporaryPath)
@@ -194,32 +236,92 @@ func (s *Store) write(data fileData) error {
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(data); err != nil {
 		_ = temporary.Close()
-		return fmt.Errorf("playlist kodlanamadı: %w", err)
+		return fmt.Errorf("çalma listesi kodlanamadı: %w", err)
 	}
 	if err := temporary.Sync(); err != nil {
 		_ = temporary.Close()
-		return fmt.Errorf("playlist diske yazılamadı: %w", err)
+		return fmt.Errorf("çalma listesi diske yazılamadı: %w", err)
 	}
 	if err := temporary.Close(); err != nil {
-		return fmt.Errorf("playlist dosyası kapatılamadı: %w", err)
+		return fmt.Errorf("çalma listesi dosyası kapatılamadı: %w", err)
 	}
 	if err := os.Rename(temporaryPath, s.path); err != nil {
-		return fmt.Errorf("playlist dosyası değiştirilemedi: %w", err)
+		return fmt.Errorf("çalma listesi dosyası değiştirilemedi: %w", err)
 	}
 	return nil
+}
+
+func ensurePrivateDirectory(directory string) error {
+	if err := os.MkdirAll(directory, 0o700); err != nil {
+		return fmt.Errorf("çalma listesi klasörü oluşturulamadı: %w", err)
+	}
+	if err := os.Chmod(directory, 0o700); err != nil {
+		return fmt.Errorf("çalma listesi klasörü izinleri ayarlanamadı: %w", err)
+	}
+	return nil
+}
+
+func emptyFileData() fileData {
+	return fileData{Version: fileVersion, Playlists: []Playlist{}}
+}
+
+func validateFileData(data fileData) error {
+	if data.Version != fileVersion {
+		return fmt.Errorf("desteklenmeyen dosya sürümü: %d", data.Version)
+	}
+	seen := make(map[string]struct{}, len(data.Playlists))
+	for _, item := range data.Playlists {
+		name, err := validateName(item.Name)
+		if err != nil {
+			return fmt.Errorf("geçersiz kayıtlı çalma listesi: %w", err)
+		}
+		if _, ok := seen[name]; ok {
+			return fmt.Errorf("yinelenen çalma listesi adı: %s", name)
+		}
+		seen[name] = struct{}{}
+		if _, err := validateTracks(item.Tracks, true); err != nil {
+			return fmt.Errorf("%s çalma listesi geçersiz: %w", name, err)
+		}
+	}
+	return nil
+}
+
+func validateTracks(tracks []string, requireAbsolute bool) ([]string, error) {
+	if len(tracks) == 0 {
+		return nil, errors.New("boş çalma sırası kaydedilemez")
+	}
+	validated := make([]string, 0, len(tracks))
+	for _, track := range tracks {
+		if strings.TrimSpace(track) == "" {
+			return nil, errors.New("çalma listesi boş dosya yolu içeremez")
+		}
+		cleaned := filepath.Clean(track)
+		if requireAbsolute && !filepath.IsAbs(cleaned) {
+			return nil, fmt.Errorf("parça yolu mutlak değil: %s", track)
+		}
+		if !requireAbsolute {
+			absolute, err := filepath.Abs(cleaned)
+			if err != nil {
+				return nil, fmt.Errorf("parça yolu çözümlenemedi: %w", err)
+			}
+			cleaned = filepath.Clean(absolute)
+		}
+		validated = append(validated, cleaned)
+	}
+	return validated, nil
 }
 
 func validateName(name string) (string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return "", errors.New("playlist adı boş olamaz")
+		return "", errors.New("çalma listesi adı boş olamaz")
 	}
 	if utf8.RuneCountInString(name) > 80 {
-		return "", errors.New("playlist adı 80 karakterden uzun olamaz")
+		return "", errors.New("çalma listesi adı 80 karakterden uzun olamaz")
 	}
 	for _, character := range name {
 		if unicode.IsControl(character) {
-			return "", errors.New("playlist adı kontrol karakteri içeremez")
+			return "", errors.New("çalma listesi adı kontrol karakteri içeremez")
 		}
 	}
 	return name, nil

@@ -7,6 +7,7 @@ import (
 	"unicode"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // View renders a layout that never intentionally exceeds the current terminal
@@ -46,6 +47,8 @@ func (m Model) View() string {
 	available := bodyLimit - len(lines) - reserveFeedback
 	if available > 0 {
 		switch {
+		case m.helpVisible:
+			lines = append(lines, m.helpView(width, available)...)
 		case m.prompt != promptNone:
 			lines = append(lines, m.promptView(width, available)...)
 		case m.libraryVisible:
@@ -69,6 +72,9 @@ func (m Model) View() string {
 }
 
 func (m Model) panelView(width, available int) []string {
+	if width >= 100 && m.panel != panelPlaylists {
+		return m.wideLibraryQueueView(width, available)
+	}
 	switch m.panel {
 	case panelQueue:
 		return m.queueView(width, available)
@@ -77,6 +83,29 @@ func (m Model) panelView(width, available int) []string {
 	default:
 		return m.libraryView(width, available)
 	}
+}
+
+func (m Model) wideLibraryQueueView(width, available int) []string {
+	contentWidth := max(2, width-3)
+	leftWidth := contentWidth * 3 / 5
+	rightWidth := contentWidth - leftWidth
+	left := m.libraryView(leftWidth, available)
+	right := m.queueView(rightWidth, available)
+	rows := min(available, max(len(left), len(right)))
+	lines := make([]string, 0, rows)
+	divider := dimStyle.Render(" │ ")
+	for row := 0; row < rows; row++ {
+		leftLine := ""
+		if row < len(left) {
+			leftLine = left[row]
+		}
+		rightLine := ""
+		if row < len(right) {
+			rightLine = right[row]
+		}
+		lines = append(lines, padRight(leftLine, leftWidth)+divider+truncate(rightLine, rightWidth))
+	}
+	return lines
 }
 
 func (m Model) libraryView(width, available int) []string {
@@ -125,7 +154,11 @@ func (m Model) libraryView(width, available int) []string {
 			playing = "▶ "
 		}
 		nameWidth := max(1, width-10)
-		line := fmt.Sprintf("%s%s%3d  %s", cursor, playing, trackIndex+1, truncate(sanitize(m.tracks[trackIndex].Name), nameWidth))
+		label := m.tracks[trackIndex].Name
+		if m.tracks[trackIndex].Folder != "" {
+			label += " · " + m.tracks[trackIndex].Folder
+		}
+		line := fmt.Sprintf("%s%s%3d  %s", cursor, playing, trackIndex+1, truncate(sanitize(label), nameWidth))
 		line = truncate(line, width)
 		switch {
 		case trackIndex == m.current:
@@ -192,13 +225,13 @@ func (m Model) playlistsView(width, available int) []string {
 	if available <= 0 {
 		return nil
 	}
-	lines := []string{accentStyle.Render(truncate(fmt.Sprintf("PLAYLISTLER  %d", len(m.playlists)), width))}
+	lines := []string{accentStyle.Render(truncate(fmt.Sprintf("ÇALMA LİSTELERİ  %d", len(m.playlists)), width))}
 	available--
 	if available <= 0 {
 		return lines
 	}
 	if len(m.playlists) == 0 {
-		return append(lines, dimStyle.Render(truncate("Kayıtlı playlist yok · sırayı S ile kaydet", width)))
+		return append(lines, dimStyle.Render(truncate("Kayıtlı çalma listesi yok · sırayı S ile kaydet", width)))
 	}
 
 	start, end := visibleRange(m.playlistCursor, len(m.playlists), available)
@@ -224,9 +257,9 @@ func (m Model) promptView(width, available int) []string {
 	if available <= 0 {
 		return nil
 	}
-	title := "PLAYLIST KAYDET"
+	title := "ÇALMA LİSTESİ KAYDET"
 	if m.prompt == promptDeletePlaylist {
-		title = "PLAYLIST SİL"
+		title = "ÇALMA LİSTESİ SİL"
 	}
 	lines := []string{accentStyle.Render(truncate(title, width))}
 	available--
@@ -267,6 +300,32 @@ func (m Model) promptView(width, available int) []string {
 	return lines
 }
 
+func (m Model) helpView(width, available int) []string {
+	content := []string{
+		"YARDIM",
+		"Space oynat/duraklat   n/p sonraki/önceki   ←/→ sar",
+		"l tek parça döngüsü   R sıra döngüsü   z sıradakileri karıştır",
+		"+/- ses   m sessiz   s durdur",
+		"j/k veya ↑/↓ gezin   g/G başa/sona git   Enter seç",
+		"a seçileni ekle   A görünenleri ekle   / ara   r yenile",
+		"Tab kütüphane/sıra   P çalma listeleri   S kaydet",
+		"J/K sırada taşı   x kaldır/sil   c sırayı temizle",
+		"t paneli gizle   ?/Esc yardımı kapat   q çık",
+	}
+	lines := make([]string, 0, min(available, len(content)))
+	for index, line := range content {
+		if len(lines) >= available {
+			break
+		}
+		style := dimStyle
+		if index == 0 {
+			style = accentStyle
+		}
+		lines = append(lines, style.Render(truncate(line, width)))
+	}
+	return lines
+}
+
 func (m Model) feedbackLine(width int) string {
 	if m.errText != "" {
 		return errorStyle.Render(truncate("Hata: "+sanitize(m.errText), width))
@@ -303,7 +362,10 @@ func (m Model) statusLine(width int) string {
 		state += " · SESSİZ"
 	}
 	if m.loopCurrent {
-		state += " · LOOP"
+		state += " · PARÇA DÖNGÜSÜ"
+	}
+	if m.repeatQueue {
+		state += " · SIRA DÖNGÜSÜ"
 	}
 
 	timeText := fmt.Sprintf("%s/%s", formatDuration(m.position), formatDuration(m.duration))
@@ -331,31 +393,34 @@ func (m Model) progressPercent() float64 {
 }
 
 func (m Model) helpText(width int) string {
+	if m.helpVisible {
+		return "?/Esc yardımı kapat  q çık"
+	}
 	if m.prompt == promptDeletePlaylist {
-		return "Enter playlisti sil  Esc iptal"
+		return "Enter çalma listesini sil  Esc iptal"
 	}
 	if m.prompt == promptOverwrite {
 		return "Enter üzerine yaz  Esc iptal"
 	}
 	if m.prompt == promptPlaylistName {
-		return "Playlist adı  Enter kaydet  Esc iptal"
+		return "Çalma listesi adı  Enter kaydet  Esc iptal"
 	}
 	if m.searching {
 		return "Arama yaz  Enter/Esc bitir  Esc tekrar temizle"
 	}
 	if width < 24 {
-		return "Space n/p l Tab P q"
+		return "Space n/p l R z ? q"
 	}
 	if width < 52 {
-		return "Space n/p  l loop  Tab panel  P playlist  S kaydet  q"
+		return "Space n/p  l/R döngü  z karıştır  Tab panel  ? yardım  q"
 	}
 	switch m.panel {
 	case panelQueue:
-		return "Space n/p  l loop  Enter oynat  J/K taşı  x sil  c temizle  Tab kütüphane  P playlist  S kaydet  q"
+		return "Enter oynat  J/K taşı  x çıkar  c temizle  z karıştır  l/R döngü  Tab kütüphane  ? yardım  q"
 	case panelPlaylists:
-		return "Enter sıraya yükle  x sil  P/Esc kapat  Space n/p  l loop  q çık"
+		return "Enter sıraya yükle  x sil  P/Esc kapat  Space n/p  l/R döngü  ? yardım  q"
 	default:
-		return "Enter sırayı çal  a ekle  A tümünü ekle  / ara  Tab sıra  P playlist  S kaydet  Space n/p  l loop  q"
+		return "Enter sırayı çal  a/A ekle  / ara  r yenile  Tab sıra  P listeler  S kaydet  ? yardım  q"
 	}
 }
 
@@ -415,14 +480,13 @@ func truncate(value string, width int) string {
 	if width <= 0 {
 		return ""
 	}
-	runes := []rune(value)
-	if len(runes) <= width {
-		return value
-	}
-	if width == 1 {
-		return "…"
-	}
-	return string(runes[:width-1]) + "…"
+	return ansi.Truncate(value, width, "…")
+}
+
+func padRight(value string, width int) string {
+	value = truncate(value, width)
+	padding := max(0, width-ansi.StringWidth(value))
+	return value + strings.Repeat(" ", padding)
 }
 
 func nonEmpty(values ...string) []string {
