@@ -174,7 +174,7 @@ func (m Model) libraryView(width, available int) []string {
 		}
 		nameWidth := max(1, width-10)
 		label := m.tracks[trackIndex].Name
-		if m.tracks[trackIndex].Folder != "" {
+		if m.showFolders && m.tracks[trackIndex].Folder != "" {
 			label += " · " + m.tracks[trackIndex].Folder
 		}
 		line := fmt.Sprintf("%s%s%3d  %s", cursor, playing, trackIndex+1, truncate(sanitize(label), nameWidth))
@@ -327,7 +327,7 @@ func (m Model) helpView(width, available int) []string {
 		"l tek parça döngüsü   R sıra döngüsü   z sıradakileri karıştır",
 		"+/- ses   m sessiz   s durdur",
 		"j/k veya ↑/↓ gezin   g/G başa/sona git   Enter seç",
-		"a seçileni ekle   A görünenleri ekle   / ara   r yenile",
+		"a seçileni ekle   A görünenleri ekle   / ara   r yenile   d klasör ayrıntısı",
 		"Tab odağı kütüphane ve çalma sırası arasında değiştirir",
 		"P çalma listeleri   S kaydet",
 		"J/K sırada taşı   x kaldır/sil   c sırayı temizle",
@@ -441,7 +441,7 @@ func (m Model) helpText(width int) string {
 	case panelPlaylists:
 		return "Enter sıraya yükle  x sil  P/Esc kapat  Space n/p  l/R döngü  ? yardım  q"
 	default:
-		return "Enter sırayı çal  a/A ekle  / ara  r yenile  Tab → çalma sırası  P listeler  S kaydet  ? yardım  q"
+		return "Enter sırayı çal  a/A ekle  / ara  r yenile  d klasör  Tab → sıra  P listeler  S kaydet  ? yardım  q"
 	}
 }
 

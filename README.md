@@ -27,8 +27,9 @@ KASET, müzik klasörlerini alt dizinleriyle birlikte tarayan terminal tabanlı 
 * Kalıcı, eşzamanlı erişime karşı kilitlenen çalma listeleri
 * Bozuk veri dosyalarını silmeden yedekleyerek kurtarma
 * Oynatılamayan parçayı bildirip sıradaki parçaya geçme
-* Son kullanılan kütüphane ve ses seviyesini hatırlama
+* Son kullanılan kütüphane, ses seviyesi ve görünüm tercihini hatırlama
 * Geniş terminallerde yan yana kütüphane ve çalma sırası
+* İsteğe bağlı göreli klasör ayrıntıları
 * Dar terminal pencerelerine uyum sağlayan Unicode güvenli arayüz
 * Uygulama içi klavye yardım ekranı
 * Uygulama kapanırken `mpv` sürecini güvenli biçimde sonlandırma
@@ -118,6 +119,7 @@ Desteklenen bir ses dosyası bulunamazsa uygulama hata mesajıyla kapanır. Bir 
 | `/`                    | Aramayı aç                                          |
 | `Esc`                  | Aramayı kapat; tekrar basıldığında sorguyu temizle  |
 | `r`                    | Kütüphaneyi yeniden tara                            |
+| `d`                    | Göreli klasör ayrıntılarını aç veya kapat           |
 | `t`                    | Ana paneli gizle veya göster                        |
 | `Tab`                  | Odağı kütüphane ve çalma sırası arasında değiştir   |
 | `?`                    | Yardım ekranını aç veya kapat                       |
@@ -156,7 +158,7 @@ Aynı adda bir liste varsa üzerine yazmadan önce onay istenir. Artık kütüph
 
 Terminal en az 100 hücre genişliğindeyse kütüphane solda, çalma sırası veya çalma listeleri sağda gösterilir. `●` işareti ve parlak başlık aktif paneli, `○` işareti ve soluk başlık pasif paneli belirtir. Seçim oku yalnızca aktif panelde görünür; `Tab` odağı kütüphane ve çalma sırası arasında değiştirir. Daha dar terminallerde aynı tuşla değiştirilen tek panel düzeni kullanılır. Dosya ve metadata metinleri terminal hücre genişliğine göre kesilir; geniş karakterler ve emojiler satırı taşırmaz.
 
-Kütüphanedeki aynı adlı parçaları ayırt etmek için parça adının yanında göreli klasör yolu gösterilir.
+Göreli klasör yolları varsayılan olarak gizlidir. Aynı adlı parçaları ayırt etmek istediğinizde `d` ile klasör ayrıntılarını açabilirsiniz; tercih sonraki oturumlarda korunur.
 
 ## Veri dosyaları
 
@@ -171,7 +173,7 @@ $XDG_CONFIG_HOME/kaset/
 | Dosya | İçerik |
 |-------|--------|
 | `playlists.json` | Kayıtlı çalma listeleri ve mutlak parça yolları |
-| `settings.json` | Son kullanılan kütüphane ve ses seviyesi |
+| `settings.json` | Son kullanılan kütüphane, ses seviyesi ve görünüm tercihi |
 | `*.lock` | Birden fazla süreç arasındaki kısa ömürlü dosya kilitleri |
 
 Yapılandırma dizini `0700`, veri ve kilit dosyaları `0600` izinleriyle oluşturulur. Yazma işlemleri geçici dosyaya yapılıp atomik olarak asıl dosyanın yerine geçirilir.
@@ -182,7 +184,8 @@ Yapılandırma dizini `0700`, veri ve kilit dosyaları `0600` izinleriyle oluşt
 {
   "version": 1,
   "library": "/home/user/Music",
-  "volume": 85
+  "volume": 85,
+  "show_folders": false
 }
 ```
 

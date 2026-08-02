@@ -18,9 +18,12 @@ import (
 
 func TestInitialVolumeOption(t *testing.T) {
 	volume := 42.0
-	model := NewWithOptions([]library.Track{{Name: "Track", Path: "/track.mp3"}}, nil, Options{InitialVolume: &volume})
-	if model.Volume() != 42 {
-		t.Fatalf("Volume() = %v, want 42", model.Volume())
+	model := NewWithOptions([]library.Track{{Name: "Track", Path: "/track.mp3"}}, nil, Options{
+		InitialVolume: &volume,
+		ShowFolders:   true,
+	})
+	if model.Volume() != 42 || !model.ShowFolders() {
+		t.Fatalf("Volume() = %v, ShowFolders() = %v", model.Volume(), model.ShowFolders())
 	}
 }
 
@@ -407,9 +410,16 @@ func TestHelpAndWideLayout(t *testing.T) {
 	if !strings.Contains(view, "KÜTÜPHANE") || !strings.Contains(view, "ÇALMA SIRASI") {
 		t.Fatalf("wide view does not contain both panels: %q", view)
 	}
+	if strings.Contains(view, "Album") {
+		t.Fatalf("folder details are visible by default: %q", view)
+	}
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	if !model.ShowFolders() || !strings.Contains(model.View(), "Album") || !strings.Contains(model.noticeText, "gösteriliyor") {
+		t.Fatalf("folder details did not become visible: show=%v notice=%q view=%q", model.ShowFolders(), model.noticeText, model.View())
+	}
 	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
-	if !model.helpVisible || !strings.Contains(model.View(), "YARDIM") || !strings.Contains(model.View(), "Tab odağı") {
-		t.Fatal("help view did not open with focus instructions")
+	if !model.helpVisible || !strings.Contains(model.View(), "YARDIM") || !strings.Contains(model.View(), "Tab odağı") || !strings.Contains(model.View(), "d klasör ayrıntısı") {
+		t.Fatal("help view did not open with focus and detail instructions")
 	}
 }
 

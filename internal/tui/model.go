@@ -58,6 +58,7 @@ type Options struct {
 	LibraryRoot   string
 	InitialNotice string
 	InitialVolume *float64
+	ShowFolders   bool
 }
 
 // Model is the Bubble Tea application state.
@@ -85,6 +86,7 @@ type Model struct {
 	muted          bool
 	loopCurrent    bool
 	repeatQueue    bool
+	showFolders    bool
 	libraryVisible bool
 	helpVisible    bool
 	scanning       bool
@@ -157,6 +159,7 @@ func NewWithOptions(tracks []library.Track, mpv playbackController, options Opti
 		height:         24,
 		volume:         initialVolume,
 		paused:         true,
+		showFolders:    options.ShowFolders,
 		libraryVisible: true,
 		panel:          panelLibrary,
 		returnPanel:    panelLibrary,
@@ -178,6 +181,11 @@ func (m Model) Init() tea.Cmd {
 // Volume returns the most recently observed playback volume.
 func (m Model) Volume() float64 {
 	return m.volume
+}
+
+// ShowFolders reports whether library folder details are visible.
+func (m Model) ShowFolders() bool {
+	return m.showFolders
 }
 
 // Update handles terminal input and asynchronous application events.
@@ -277,6 +285,13 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.beginPlaylistSave()
 	case "r":
 		return m.beginLibraryRefresh()
+	case "d":
+		m.showFolders = !m.showFolders
+		if m.showFolders {
+			m.setNotice("Klasör ayrıntıları gösteriliyor")
+		} else {
+			m.setNotice("Klasör ayrıntıları gizlendi")
+		}
 	case " ":
 		if m.current >= 0 {
 			m.run(func() error { return m.player.TogglePause() })

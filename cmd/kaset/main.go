@@ -96,6 +96,7 @@ func run() error {
 		LibraryRoot:   absoluteDirectory,
 		InitialNotice: strings.Join(initialNotices, " · "),
 		InitialVolume: &settings.Volume,
+		ShowFolders:   settings.ShowFolders,
 	})
 	program := tea.NewProgram(model, tea.WithAltScreen())
 	hangup := make(chan os.Signal, 1)
@@ -118,10 +119,16 @@ func run() error {
 	closeErr := mpv.Close()
 
 	volume := settings.Volume
+	showFolders := settings.ShowFolders
 	if result, ok := finalModel.(tui.Model); ok {
 		volume = result.Volume()
+		showFolders = result.ShowFolders()
 	}
-	settingsErr = settingsStore.Save(config.Settings{Library: absoluteDirectory, Volume: volume})
+	settingsErr = settingsStore.Save(config.Settings{
+		Library:     absoluteDirectory,
+		Volume:      volume,
+		ShowFolders: showFolders,
+	})
 	return errors.Join(runErr, closeErr, settingsErr)
 }
 

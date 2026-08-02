@@ -13,19 +13,19 @@ func TestLoadDefaultsAndSaveRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if settings.Version != fileVersion || settings.Library != "" || settings.Volume != 100 {
+	if settings.Version != fileVersion || settings.Library != "" || settings.Volume != 100 || settings.ShowFolders {
 		t.Fatalf("Load() defaults = %#v", settings)
 	}
 
 	library := t.TempDir()
-	if err := store.Save(Settings{Library: library, Volume: 42}); err != nil {
+	if err := store.Save(Settings{Library: library, Volume: 42, ShowFolders: true}); err != nil {
 		t.Fatal(err)
 	}
 	settings, err = store.Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if settings.Library != library || settings.Volume != 42 {
+	if settings.Library != library || settings.Volume != 42 || !settings.ShowFolders {
 		t.Fatalf("Load() = %#v", settings)
 	}
 }
