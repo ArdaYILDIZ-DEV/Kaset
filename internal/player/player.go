@@ -401,14 +401,6 @@ func eventFromMessage(message ipcMessage) (Event, bool) {
 	return Event{}, false
 }
 
-func decodeMessage(line []byte) (Event, bool) {
-	message, err := decodeIPCMessage(line)
-	if err != nil {
-		return Event{Type: EventError, Err: err}, true
-	}
-	return eventFromMessage(message)
-}
-
 // Close asks mpv to quit, then forcefully cleans up if it does not respond.
 func (p *Player) Close() error {
 	var closeErr error

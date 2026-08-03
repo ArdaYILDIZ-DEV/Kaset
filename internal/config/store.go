@@ -16,10 +16,11 @@ const fileVersion = 1
 
 // Settings contains small pieces of state restored between sessions.
 type Settings struct {
-	Version     int     `json:"version"`
-	Library     string  `json:"library,omitempty"`
-	Volume      float64 `json:"volume"`
-	ShowFolders bool    `json:"show_folders"`
+	Version       int     `json:"version"`
+	Library       string  `json:"library,omitempty"`
+	Volume        float64 `json:"volume"`
+	ShowFolders   bool    `json:"show_folders"`
+	HideSidePanel bool    `json:"hide_side_panel"`
 }
 
 // RecoveryError reports that invalid settings were moved to a backup file.

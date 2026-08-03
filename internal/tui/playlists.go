@@ -21,7 +21,7 @@ func (m Model) beginPlaylistSave() (tea.Model, tea.Cmd) {
 		m.setError("Çalma listesi deposu kullanılamıyor")
 		return m, nil
 	}
-	m.libraryVisible = true
+	m.listsVisible = true
 	m.prompt = promptPlaylistName
 	m.pendingName = ""
 	m.playlistName.SetValue(m.loadedPlaylist)
@@ -163,21 +163,12 @@ func (m *Model) openPlaylists() {
 		m.setError("Çalma listesi deposu kullanılamıyor")
 		return
 	}
-	m.returnPanel = m.panel
 	m.clearFeedback()
 	if !m.refreshPlaylists() {
 		return
 	}
-	m.panel = panelPlaylists
-	m.libraryVisible = true
+	m.showSidePanel(panelPlaylists)
 	m.playlistCursor = clampCursor(m.playlistCursor, len(m.playlists))
-}
-
-func (m *Model) closePlaylists() {
-	m.panel = m.returnPanel
-	if m.panel == panelPlaylists {
-		m.panel = panelLibrary
-	}
 }
 
 // refreshPlaylists retries once after the store recovers a corrupt data file.
@@ -232,7 +223,7 @@ func (m *Model) loadSelectedPlaylist() {
 	m.queue.Replace(items, -1)
 	m.queueCursor = 0
 	m.loadedPlaylist = selected.Name
-	m.panel = panelQueue
+	m.showSidePanel(panelQueue)
 	if missing > 0 {
 		m.setNotice(fmt.Sprintf("%s yüklendi; %d eksik dosya atlandı", selected.Name, missing))
 	} else {

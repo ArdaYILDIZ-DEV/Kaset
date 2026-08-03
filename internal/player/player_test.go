@@ -28,19 +28,19 @@ func TestTailBufferKeepsBoundedSuffix(t *testing.T) {
 }
 
 func TestDecodePropertyChange(t *testing.T) {
-	event, ok := decodeMessage([]byte(`{"event":"property-change","name":"volume","data":42.5}`))
+	event, ok := decodeEvent(t, `{"event":"property-change","name":"volume","data":42.5}`)
 	if !ok {
-		t.Fatal("decodeMessage() ok = false")
+		t.Fatal("eventFromMessage() ok = false")
 	}
 	if event.Type != EventProperty || event.Name != "volume" || event.Data != 42.5 {
-		t.Fatalf("decodeMessage() = %#v", event)
+		t.Fatalf("eventFromMessage() = %#v", event)
 	}
 }
 
 func TestDecodeEndFile(t *testing.T) {
-	event, ok := decodeMessage([]byte(`{"event":"end-file","reason":"error","file_error":"unrecognized file format"}`))
+	event, ok := decodeEvent(t, `{"event":"end-file","reason":"error","file_error":"unrecognized file format"}`)
 	if !ok || event.Type != EventEndFile || event.Reason != "error" || event.FileError != "unrecognized file format" {
-		t.Fatalf("decodeMessage() = %#v, %v", event, ok)
+		t.Fatalf("eventFromMessage() = %#v, %v", event, ok)
 	}
 }
 
@@ -55,10 +55,19 @@ func TestDecodeCommandResponse(t *testing.T) {
 }
 
 func TestDecodeCommandError(t *testing.T) {
-	event, ok := decodeMessage([]byte(`{"error":"property unavailable"}`))
+	event, ok := decodeEvent(t, `{"error":"property unavailable"}`)
 	if !ok || event.Type != EventError || event.Err == nil {
-		t.Fatalf("decodeMessage() = %#v, %v", event, ok)
+		t.Fatalf("eventFromMessage() = %#v, %v", event, ok)
 	}
+}
+
+func decodeEvent(t *testing.T, line string) (Event, bool) {
+	t.Helper()
+	message, err := decodeIPCMessage([]byte(line))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return eventFromMessage(message)
 }
 
 func TestPlayerIntegration(t *testing.T) {

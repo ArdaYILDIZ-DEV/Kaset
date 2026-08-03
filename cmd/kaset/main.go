@@ -98,6 +98,7 @@ func run() error {
 		InitialNotice: strings.Join(initialNotices, " · "),
 		InitialVolume: &settings.Volume,
 		ShowFolders:   settings.ShowFolders,
+		HideSidePanel: settings.HideSidePanel,
 	})
 	program := tea.NewProgram(model, tea.WithAltScreen())
 	hangup := make(chan os.Signal, 1)
@@ -121,14 +122,17 @@ func run() error {
 
 	volume := settings.Volume
 	showFolders := settings.ShowFolders
+	hideSidePanel := settings.HideSidePanel
 	if result, ok := finalModel.(tui.Model); ok {
 		volume = result.Volume()
 		showFolders = result.ShowFolders()
+		hideSidePanel = !result.SidePanelEnabled()
 	}
 	settingsErr = settingsStore.Save(config.Settings{
-		Library:     absoluteDirectory,
-		Volume:      volume,
-		ShowFolders: showFolders,
+		Library:       absoluteDirectory,
+		Volume:        volume,
+		ShowFolders:   showFolders,
+		HideSidePanel: hideSidePanel,
 	})
 	return errors.Join(runErr, closeErr, settingsErr)
 }

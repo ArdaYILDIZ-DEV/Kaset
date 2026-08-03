@@ -54,9 +54,10 @@ func TestInitialVolumeOption(t *testing.T) {
 	model := NewWithOptions([]library.Track{{Name: "Track", Path: "/track.mp3"}}, nil, Options{
 		InitialVolume: &volume,
 		ShowFolders:   true,
+		HideSidePanel: true,
 	})
-	if model.Volume() != 42 || !model.ShowFolders() {
-		t.Fatalf("Volume() = %v, ShowFolders() = %v", model.Volume(), model.ShowFolders())
+	if model.Volume() != 42 || !model.ShowFolders() || model.SidePanelEnabled() {
+		t.Fatalf("Volume() = %v, ShowFolders() = %v, SidePanelEnabled() = %v", model.Volume(), model.ShowFolders(), model.SidePanelEnabled())
 	}
 }
 
@@ -119,15 +120,54 @@ func TestSearchFirstEscapeClosesSecondEscapeClears(t *testing.T) {
 	}
 }
 
-func TestLibraryToggle(t *testing.T) {
+func TestListAreaToggle(t *testing.T) {
 	model := New([]library.Track{{Name: "Track", Path: "/track.mp3"}}, nil)
+	model.width = 120
+	model.height = 24
 	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
-	if model.libraryVisible {
-		t.Fatal("library remained visible after t")
+	view := model.View()
+	if model.listsVisible || strings.Contains(view, "KÜTÜPHANE") || strings.Contains(view, "ÇALMA SIRASI") {
+		t.Fatalf("list area remained visible after t: %q", view)
 	}
+
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	if !model.listsVisible || !model.sidePanelEnabled || model.panel != panelQueue {
+		t.Fatalf("y did not open the queue from the hidden list view: lists=%v side=%v panel=%v", model.listsVisible, model.sidePanelEnabled, model.panel)
+	}
+
 	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
-	if !model.libraryVisible {
-		t.Fatal("library remained hidden after second t")
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	if !model.listsVisible || !model.sidePanelEnabled || model.panel != panelQueue {
+		t.Fatal("t did not restore the previous list state")
+	}
+}
+
+func TestQueueSidePanelToggleDoesNotFollowTrackSelection(t *testing.T) {
+	controller := &fakePlayer{events: make(chan player.Event)}
+	model := New([]library.Track{{Name: "Track", Path: "/track.mp3"}}, controller)
+	model.width = 120
+	model.height = 24
+
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	view := model.View()
+	if model.sidePanelEnabled || model.panel != panelLibrary || strings.Contains(view, "ÇALMA SIRASI") {
+		t.Fatalf("queue panel did not close: enabled=%v panel=%v view=%q", model.sidePanelEnabled, model.panel, view)
+	}
+
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyEnter})
+	if model.sidePanelEnabled || len(controller.loads) != 1 {
+		t.Fatalf("track selection reopened queue: enabled=%v loads=%v", model.sidePanelEnabled, controller.loads)
+	}
+
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyTab})
+	if model.sidePanelEnabled || model.panel != panelLibrary {
+		t.Fatalf("Tab opened a hidden side panel: enabled=%v panel=%v", model.sidePanelEnabled, model.panel)
+	}
+
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	view = model.View()
+	if !model.sidePanelEnabled || model.sidePanel != panelQueue || model.panel != panelQueue || !strings.Contains(view, "ÇALMA SIRASI") {
+		t.Fatalf("queue panel did not reopen: enabled=%v side=%v panel=%v view=%q", model.sidePanelEnabled, model.sidePanel, model.panel, view)
 	}
 }
 
@@ -451,8 +491,9 @@ func TestHelpAndWideLayout(t *testing.T) {
 		t.Fatalf("folder details did not become visible: show=%v notice=%q view=%q", model.ShowFolders(), model.noticeText, model.View())
 	}
 	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
-	if !model.helpVisible || !strings.Contains(model.View(), "YARDIM") || !strings.Contains(model.View(), "Tab odağı") || !strings.Contains(model.View(), "d klasör ayrıntısı") {
-		t.Fatal("help view did not open with focus and detail instructions")
+	help := model.View()
+	if !model.helpVisible || !strings.Contains(help, "YARDIM") || !strings.Contains(help, "Tab odağı") || !strings.Contains(help, "d klasör ayrıntısı") || !strings.Contains(help, "y çalma sırası") || !strings.Contains(help, "t tüm listeleri gizle") {
+		t.Fatal("help view did not open with panel and detail instructions")
 	}
 }
 
@@ -519,6 +560,22 @@ func TestWidePlaylistsStayInRightPanelAndReturnToQueueAfterLoad(t *testing.T) {
 	}
 	if !strings.Contains(view, "Library Track") || strings.Contains(view, "ÇALMA SIRASI") {
 		t.Fatalf("unexpected wide playlist content: %q", view)
+	}
+
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyTab})
+	view = model.View()
+	if model.panel != panelLibrary || model.sidePanel != panelPlaylists || !strings.Contains(view, "● KÜTÜPHANE") || !strings.Contains(view, "○ ÇALMA LİSTELERİ") {
+		t.Fatalf("Tab did not preserve the visible playlist panel: panel=%v side=%v view=%q", model.panel, model.sidePanel, view)
+	}
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
+	if model.sidePanelEnabled || model.panel != panelLibrary {
+		t.Fatalf("P did not close playlists: enabled=%v panel=%v", model.sidePanelEnabled, model.panel)
+	}
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'P'}})
+	if !model.listsVisible || !model.sidePanelEnabled || model.sidePanel != panelPlaylists || model.panel != panelPlaylists {
+		t.Fatalf("P did not open playlists from the hidden list view: lists=%v enabled=%v side=%v panel=%v", model.listsVisible, model.sidePanelEnabled, model.sidePanel, model.panel)
 	}
 
 	model = updateWithKey(t, model, tea.KeyMsg{Type: tea.KeyEnter})

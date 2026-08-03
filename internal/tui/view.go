@@ -51,10 +51,10 @@ func (m Model) View() string {
 			lines = append(lines, m.helpView(width, available)...)
 		case m.prompt != promptNone:
 			lines = append(lines, m.promptView(width, available)...)
-		case m.libraryVisible:
+		case m.listsVisible:
 			lines = append(lines, m.panelView(width, available)...)
 		default:
-			lines = append(lines, dimStyle.Render(truncate("Panel gizli · t ile aç", width)))
+			lines = append(lines, dimStyle.Render(truncate("Listeler gizli · t ile aç", width)))
 		}
 	}
 
@@ -89,11 +89,10 @@ func startupLogoStyleIndex(frame, letter int) int {
 // panelView chooses a split or single-panel layout based on terminal width.
 func (m Model) panelView(width, available int) []string {
 	if width >= 100 {
-		rightPanel := panelQueue
-		if m.panel == panelPlaylists {
-			rightPanel = panelPlaylists
+		if m.sidePanelEnabled {
+			return m.wideLibraryView(width, available, m.sidePanel)
 		}
-		return m.wideLibraryView(width, available, rightPanel)
+		return m.libraryView(width, available)
 	}
 	switch m.panel {
 	case panelQueue:
@@ -274,13 +273,14 @@ func (m Model) playlistsView(width, available int) []string {
 	start, end := visibleRange(m.playlistCursor, len(m.playlists), available)
 	for position := start; position < end; position++ {
 		item := m.playlists[position]
+		selected := position == m.playlistCursor && m.panel == panelPlaylists
 		cursor := "  "
-		if position == m.playlistCursor {
+		if selected {
 			cursor = "> "
 		}
 		line := fmt.Sprintf("%s%3d  %s  (%d)", cursor, position+1, sanitize(item.Name), len(item.Tracks))
 		line = truncate(line, width)
-		if position == m.playlistCursor {
+		if selected {
 			line = cursorStyle.Bold(true).Render(line)
 		} else {
 			line = dimStyle.Render(line)
@@ -345,10 +345,10 @@ func (m Model) helpView(width, available int) []string {
 		"+/- ses   m sessiz   s durdur",
 		"j/k veya ↑/↓ gezin   g/G başa/sona git   Enter seç",
 		"a seçileni ekle   A görünenleri ekle   / ara   r yenile   d klasör ayrıntısı",
-		"Tab odağı kütüphane ve çalma sırası arasında değiştirir",
-		"P çalma listeleri   S kaydet",
+		"Tab odağı görünür paneller arasında değiştirir",
+		"y çalma sırası   P çalma listeleri   S kaydet",
 		"J/K sırada taşı   x kaldır/sil   c sırayı temizle",
-		"t paneli gizle   ?/Esc yardımı kapat   q çık",
+		"t tüm listeleri gizle   ?/Esc yardımı kapat   q çık",
 	}
 	lines := make([]string, 0, min(available, len(content)))
 	for index, line := range content {
@@ -446,19 +446,28 @@ func (m Model) helpText(width int) string {
 	if m.searching {
 		return "Arama yaz  Enter/Esc bitir  Esc tekrar temizle"
 	}
+	if !m.listsVisible {
+		return "t listeleri aç  Space oynat/duraklat  n/p geçiş  ? yardım  q çık"
+	}
 	if width < 24 {
-		return "Space n/p Tab ? q"
+		return "Space n/p y P t ? q"
 	}
 	if width < 52 {
-		return "Space n/p  l/R döngü  z karıştır  Tab geçiş  ? yardım  q"
+		return "Space n/p  y sıra  P listeler  t gizle  ? yardım  q"
+	}
+	if !m.sidePanelEnabled {
+		return "Enter sırayı çal  a/A ekle  / ara  y sıra  P listeler  t tümünü gizle  ? yardım  q"
 	}
 	switch m.panel {
 	case panelQueue:
-		return "Enter oynat  J/K taşı  x çıkar  c temizle  z karıştır  l/R döngü  Tab → kütüphane  ? yardım  q"
+		return "Enter oynat  J/K taşı  x çıkar  c temizle  y kapat  Tab → kütüphane  ? yardım  q"
 	case panelPlaylists:
-		return "Enter sıraya yükle  x sil  P/Esc kapat  Space n/p  l/R döngü  ? yardım  q"
+		return "Enter sıraya yükle  x sil  P/Esc kapat  y → sıra  Tab → kütüphane  ? yardım  q"
 	default:
-		return "Enter sırayı çal  a/A ekle  / ara  r yenile  d klasör  Tab → sıra  P listeler  S kaydet  ? yardım  q"
+		if m.sidePanel == panelPlaylists {
+			return "Enter sırayı çal  a/A ekle  / ara  Tab → listeler  P kapat  y → sıra  t gizle  ? yardım  q"
+		}
+		return "Enter sırayı çal  a/A ekle  / ara  Tab → sıra  y kapat  P listeler  t gizle  ? yardım  q"
 	}
 }
 
@@ -473,15 +482,6 @@ func visibleRange(cursor, total, rows int) (int, int) {
 	start := cursor - rows/2
 	start = max(0, min(start, total-rows))
 	return start, start + rows
-}
-
-func indexOf(values []int, wanted int) int {
-	for index, value := range values {
-		if value == wanted {
-			return index
-		}
-	}
-	return -1
 }
 
 func formatDuration(seconds float64) string {

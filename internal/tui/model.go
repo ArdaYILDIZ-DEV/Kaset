@@ -73,49 +73,51 @@ type Options struct {
 	InitialNotice string
 	InitialVolume *float64
 	ShowFolders   bool
+	HideSidePanel bool
 }
 
 // Model is the Bubble Tea application state.
 type Model struct {
-	tracks         []library.Track
-	filtered       []int
-	player         playbackController
-	playlistStore  *playlist.Store
-	playlists      []playlist.Playlist
-	queue          playqueue.Queue
-	libraryRoot    string
-	cursor         int
-	queueCursor    int
-	playlistCursor int
-	current        int
-	width          int
-	height         int
-	title          string
-	artist         string
-	album          string
-	position       float64
-	duration       float64
-	volume         float64
-	paused         bool
-	muted          bool
-	loopCurrent    bool
-	repeatQueue    bool
-	showFolders    bool
-	libraryVisible bool
-	helpVisible    bool
-	scanning       bool
-	panel          panelKind
-	returnPanel    panelKind
-	searching      bool
-	search         textinput.Model
-	prompt         promptMode
-	playlistName   textinput.Model
-	pendingName    string
-	loadedPlaylist string
-	errText        string
-	noticeText     string
-	progress       progress.Model
-	startupFrame   int
+	tracks           []library.Track
+	filtered         []int
+	player           playbackController
+	playlistStore    *playlist.Store
+	playlists        []playlist.Playlist
+	queue            playqueue.Queue
+	libraryRoot      string
+	cursor           int
+	queueCursor      int
+	playlistCursor   int
+	current          int
+	width            int
+	height           int
+	title            string
+	artist           string
+	album            string
+	position         float64
+	duration         float64
+	volume           float64
+	paused           bool
+	muted            bool
+	loopCurrent      bool
+	repeatQueue      bool
+	showFolders      bool
+	listsVisible     bool
+	sidePanelEnabled bool
+	helpVisible      bool
+	scanning         bool
+	panel            panelKind
+	sidePanel        panelKind
+	searching        bool
+	search           textinput.Model
+	prompt           promptMode
+	playlistName     textinput.Model
+	pendingName      string
+	loadedPlaylist   string
+	errText          string
+	noticeText       string
+	progress         progress.Model
+	startupFrame     int
 }
 
 type playerEventMsg player.Event
@@ -164,25 +166,26 @@ func NewWithOptions(tracks []library.Track, mpv playbackController, options Opti
 	}
 
 	return Model{
-		tracks:         tracks,
-		filtered:       filtered,
-		player:         mpv,
-		playlistStore:  options.PlaylistStore,
-		queue:          playqueue.New(),
-		libraryRoot:    options.LibraryRoot,
-		current:        -1,
-		width:          80,
-		height:         24,
-		volume:         initialVolume,
-		paused:         true,
-		showFolders:    options.ShowFolders,
-		libraryVisible: true,
-		panel:          panelLibrary,
-		returnPanel:    panelLibrary,
-		search:         search,
-		playlistName:   playlistName,
-		noticeText:     options.InitialNotice,
-		progress:       bar,
+		tracks:           tracks,
+		filtered:         filtered,
+		player:           mpv,
+		playlistStore:    options.PlaylistStore,
+		queue:            playqueue.New(),
+		libraryRoot:      options.LibraryRoot,
+		current:          -1,
+		width:            80,
+		height:           24,
+		volume:           initialVolume,
+		paused:           true,
+		showFolders:      options.ShowFolders,
+		listsVisible:     true,
+		sidePanelEnabled: !options.HideSidePanel,
+		panel:            panelLibrary,
+		sidePanel:        panelQueue,
+		search:           search,
+		playlistName:     playlistName,
+		noticeText:       options.InitialNotice,
+		progress:         bar,
 	}
 }
 
@@ -203,6 +206,11 @@ func (m Model) Volume() float64 {
 // ShowFolders reports whether library folder details are visible.
 func (m Model) ShowFolders() bool {
 	return m.showFolders
+}
+
+// SidePanelEnabled reports whether the secondary panel should be shown with the list area.
+func (m Model) SidePanelEnabled() bool {
+	return m.sidePanelEnabled
 }
 
 // Update handles terminal input and asynchronous application events.
@@ -280,31 +288,46 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.helpVisible = true
 	case "esc":
 		if m.panel == panelPlaylists {
-			m.closePlaylists()
+			m.hideSidePanel()
 		} else if m.search.Value() != "" {
 			m.search.SetValue("")
 			m.refreshFilter()
 		}
 	case "/":
-		m.libraryVisible = true
+		m.listsVisible = true
 		m.panel = panelLibrary
 		m.searching = true
 		m.search.SetCursor(len([]rune(m.search.Value())))
 		return m, m.search.Focus()
 	case "t":
-		m.libraryVisible = !m.libraryVisible
+		m.listsVisible = !m.listsVisible
+	case "y":
+		if m.listsVisible && m.sidePanelEnabled && m.sidePanel == panelQueue {
+			m.hideSidePanel()
+			m.setNotice("Çalma sırası gizlendi")
+		} else {
+			m.showSidePanel(panelQueue)
+			m.setNotice("Çalma sırası açıldı")
+		}
 	case "tab":
-		m.libraryVisible = true
-		if m.panel == panelLibrary {
-			m.panel = panelQueue
-			m.setNotice("Odak: Çalma sırası")
+		if !m.listsVisible {
+			m.setNotice("Listeler gizli · t ile aç")
+		} else if !m.sidePanelEnabled {
+			m.setNotice("Yan panel kapalı · y veya P ile aç")
+		} else if m.panel == panelLibrary {
+			m.panel = m.sidePanel
+			if m.panel == panelPlaylists {
+				m.setNotice("Odak: Çalma listeleri")
+			} else {
+				m.setNotice("Odak: Çalma sırası")
+			}
 		} else {
 			m.panel = panelLibrary
 			m.setNotice("Odak: Kütüphane")
 		}
 	case "P":
-		if m.panel == panelPlaylists {
-			m.closePlaylists()
+		if m.listsVisible && m.sidePanelEnabled && m.sidePanel == panelPlaylists {
+			m.hideSidePanel()
 		} else {
 			m.openPlaylists()
 		}
@@ -364,6 +387,18 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.handlePanelKey(msg.String())
 	}
 	return m, nil
+}
+
+func (m *Model) showSidePanel(panel panelKind) {
+	m.listsVisible = true
+	m.sidePanelEnabled = true
+	m.sidePanel = panel
+	m.panel = panel
+}
+
+func (m *Model) hideSidePanel() {
+	m.sidePanelEnabled = false
+	m.panel = panelLibrary
 }
 
 // handlePanelKey interprets navigation and actions in the currently focused panel.

@@ -105,8 +105,10 @@ Desteklenen bir ses dosyası bulunamazsa uygulama hata mesajıyla kapanır. Bir 
 | `n` / `p` | Sonraki veya önceki parçaya geç |
 | `/`, `Esc` | Aramayı aç veya kapat |
 | `a` / `A` | Seçili parçayı veya görünen tüm parçaları sıraya ekle |
-| `Tab` | Kütüphane ve çalma sırası arasında geçiş yap |
-| `P` | Çalma listelerini aç veya kapat |
+| `Tab` | Görünür kütüphane ve yan panel arasında geçiş yap |
+| `y` | Çalma sırası panelini aç veya kapat |
+| `P` | Kayıtlı çalma listeleri panelini aç veya kapat |
+| `t` | Kütüphane ve yan panel dâhil tüm liste alanını gizle veya göster |
 | `?` | Uygulama içi yardımda tüm kontrolleri göster |
 | `q` | Uygulamadan çık |
 
@@ -116,7 +118,7 @@ Desteklenen bir ses dosyası bulunamazsa uygulama hata mesajıyla kapanır. Bir 
 
 ## Arayüz davranışı
 
-Terminal en az 100 hücre genişliğindeyse kütüphane solda, çalma sırası veya çalma listeleri sağda gösterilir. `●` işareti ve parlak başlık aktif paneli, `○` işareti ve soluk başlık pasif paneli belirtir. Seçim oku yalnızca aktif panelde görünür; `Tab` odağı kütüphane ve çalma sırası arasında değiştirir. Daha dar terminallerde aynı tuşla değiştirilen tek panel düzeni kullanılır. Dosya ve metadata metinleri terminal hücre genişliğine göre kesilir; geniş karakterler ve emojiler satırı taşırmaz.
+Terminal en az 100 hücre genişliğindeyse kütüphane solda, açık olan çalma sırası veya kayıtlı çalma listeleri paneli sağda gösterilir. `y` çalma sırasını, `P` kayıtlı listeleri açıp kapatır; bu iki yan panel birbirinin yerini alır. Yan panelin açık veya kapalı olması sonraki oturumda hatırlanır. `t`, oynatıcı bilgilerini açık bırakarak bütün liste alanını gizler veya gösterir. Parça oynatmak ya da sıraya eklemek kapalı yan paneli kendiliğinden açmaz; kayıtlı bir çalma listesi yüklendiğinde çalma sırası açılır. `●` işareti ve parlak başlık aktif paneli, `○` işareti ve soluk başlık pasif paneli belirtir. Seçim oku yalnızca aktif panelde görünür; `Tab` yalnızca görünür paneller arasında odağı değiştirir. Daha dar terminallerde aynı kontroller tek panel düzeninde çalışır. Dosya ve metadata metinleri terminal hücre genişliğine göre kesilir; geniş karakterler ve emojiler satırı taşırmaz.
 
 Göreli klasör yolları varsayılan olarak gizlidir. Aynı adlı parçaları ayırt etmek istediğinizde `d` ile klasör ayrıntılarını açabilirsiniz; tercih sonraki oturumlarda korunur.
 
@@ -145,7 +147,8 @@ Yapılandırma dizini `0700`, veri ve kilit dosyaları `0600` izinleriyle oluşt
   "version": 1,
   "library": "/home/user/Music",
   "volume": 85,
-  "show_folders": false
+  "show_folders": false,
+  "hide_side_panel": false
 }
 ```
 
