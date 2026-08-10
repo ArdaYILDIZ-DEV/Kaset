@@ -19,9 +19,12 @@ func TestScanFindsSupportedFilesRecursively(t *testing.T) {
 		}
 	}
 
-	tracks, err := Scan(root)
+	tracks, issues, err := ScanWithIssues(root)
 	if err != nil {
-		t.Fatalf("Scan() error = %v", err)
+		t.Fatalf("ScanWithIssues() error = %v", err)
+	}
+	if len(issues) != 0 {
+		t.Fatalf("ScanWithIssues() issues = %#v", issues)
 	}
 	if len(tracks) != 2 {
 		t.Fatalf("len(tracks) = %d, want 2", len(tracks))
@@ -73,12 +76,15 @@ func TestScanSkipsSymlinkedTracks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tracks, err := Scan(root)
+	tracks, issues, err := ScanWithIssues(root)
 	if err != nil {
-		t.Fatalf("Scan() error = %v", err)
+		t.Fatalf("ScanWithIssues() error = %v", err)
+	}
+	if len(issues) != 0 {
+		t.Fatalf("ScanWithIssues() issues = %#v", issues)
 	}
 	if len(tracks) != 1 || tracks[0].Path != target {
-		t.Fatalf("Scan() tracks = %#v, want only %q", tracks, target)
+		t.Fatalf("ScanWithIssues() tracks = %#v, want only %q", tracks, target)
 	}
 }
 
@@ -88,7 +94,7 @@ func TestScanRejectsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := Scan(path); err == nil {
-		t.Fatal("Scan() error = nil, want an error for a file path")
+	if _, _, err := ScanWithIssues(path); err == nil {
+		t.Fatal("ScanWithIssues() error = nil, want an error for a file path")
 	}
 }

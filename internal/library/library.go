@@ -34,12 +34,6 @@ var supportedExtensions = map[string]struct{}{
 	".wma":  {},
 }
 
-// Scan recursively finds supported audio files under root.
-func Scan(root string) ([]Track, error) {
-	tracks, _, err := ScanWithIssues(root)
-	return tracks, err
-}
-
 // ScanWithIssues returns supported tracks and non-fatal traversal errors.
 func ScanWithIssues(root string) ([]Track, []ScanIssue, error) {
 	absoluteRoot, err := filepath.Abs(root)
