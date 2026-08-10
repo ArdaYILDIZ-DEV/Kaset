@@ -328,6 +328,15 @@ func (p *Player) failPending(err error) {
 	}
 }
 
+// emitEvent delivers asynchronous state changes without delaying IPC responses.
+// Events are best-effort because a slow UI must not block the IPC reader.
+func (p *Player) emitEvent(event Event) {
+	select {
+	case p.events <- event:
+	default:
+	}
+}
+
 // readLoop dispatches command responses and throttled asynchronous mpv events.
 func (p *Player) readLoop() {
 	defer close(p.readDone)
@@ -342,7 +351,7 @@ func (p *Player) readLoop() {
 	for scanner.Scan() {
 		message, err := decodeIPCMessage(scanner.Bytes())
 		if err != nil {
-			p.events <- Event{Type: EventError, Err: err}
+			p.emitEvent(Event{Type: EventError, Err: err})
 			continue
 		}
 		if message.RequestID != 0 {
@@ -364,17 +373,12 @@ func (p *Player) readLoop() {
 				continue
 			}
 			lastPositionEvent = now
-			select {
-			case p.events <- event:
-			default:
-			}
-			continue
 		}
-		p.events <- event
+		p.emitEvent(event)
 	}
 
 	if err := scanner.Err(); err != nil && !errors.Is(err, net.ErrClosed) {
-		p.events <- Event{Type: EventError, Err: fmt.Errorf("mpv bağlantısı kesildi: %w", err)}
+		p.emitEvent(Event{Type: EventError, Err: fmt.Errorf("mpv bağlantısı kesildi: %w", err)})
 	}
 }
 

@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -58,6 +60,49 @@ func TestDecodeCommandError(t *testing.T) {
 	event, ok := decodeEvent(t, `{"error":"property unavailable"}`)
 	if !ok || event.Type != EventError || event.Err == nil {
 		t.Fatalf("eventFromMessage() = %#v, %v", event, ok)
+	}
+}
+
+func TestReadLoopDoesNotBlockOnFullEventChannel(t *testing.T) {
+	reader, writer := net.Pipe()
+	t.Cleanup(func() {
+		_ = reader.Close()
+		_ = writer.Close()
+	})
+
+	result := make(chan commandResult, 1)
+	p := &Player{
+		conn:     reader,
+		events:   make(chan Event, 1),
+		readDone: make(chan struct{}),
+		pending:  map[uint64]chan commandResult{1: result},
+	}
+	p.events <- Event{Type: EventProperty}
+	go p.readLoop()
+
+	writeDone := make(chan error, 1)
+	go func() {
+		_, err := io.WriteString(writer, "{\"event\":\"property-change\",\"name\":\"volume\",\"data\":80}\n{\"request_id\":1,\"error\":\"success\"}\n")
+		writeDone <- err
+	}()
+
+	select {
+	case response := <-result:
+		if response.err != nil {
+			t.Fatalf("command response error = %v", response.err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("command response was blocked behind a full event channel")
+	}
+	if err := <-writeDone; err != nil {
+		t.Fatalf("IPC write error = %v", err)
+	}
+
+	_ = writer.Close()
+	select {
+	case <-p.readDone:
+	case <-time.After(time.Second):
+		t.Fatal("read loop did not stop after the IPC connection closed")
 	}
 }
 
