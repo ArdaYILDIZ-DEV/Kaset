@@ -192,9 +192,14 @@ func (m *Model) handleEndFile(event player.Event) {
 		}
 		message := fmt.Sprintf("%s çalınamadı: %s", failed, detail)
 		position, ok := m.queue.NextPosition()
-		if ok && m.playQueueAt(position) {
-			m.setNotice(message + "; sıradaki parçaya geçildi")
-			return
+		if ok {
+			if m.playQueueAt(position) {
+				m.setNotice(message + "; sıradaki parçaya geçildi")
+				return
+			}
+			// A failed load still consumes this queue entry so the next manual
+			// transition does not retry the same broken track.
+			_, _ = m.queue.SetPosition(position)
 		}
 		m.current = -1
 		m.paused = true

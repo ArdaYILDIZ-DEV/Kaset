@@ -406,6 +406,34 @@ func TestPlaybackErrorSkipsToNextTrack(t *testing.T) {
 	}
 }
 
+func TestPlaybackErrorAdvancesQueueWhenNextLoadFails(t *testing.T) {
+	controller := &fakePlayer{
+		events: make(chan player.Event),
+		loadErrors: map[string]error{
+			"/music/failing.mp3": errors.New("load failed"),
+		},
+	}
+	model := New([]library.Track{
+		{Name: "Broken", Path: "/music/broken.mp3"},
+		{Name: "Failing", Path: "/music/failing.mp3"},
+		{Name: "Working", Path: "/music/working.mp3"},
+	}, controller)
+	model.queue.Replace([]int{0, 1, 2}, -1)
+	if !model.playQueueAt(0) {
+		t.Fatal("initial play failed")
+	}
+
+	model.handlePlayerEvent(player.Event{Type: player.EventEndFile, Reason: "error", FileError: "decode failed"})
+	if model.queue.Position() != 1 || model.current != -1 {
+		t.Fatalf("position=%d current=%d", model.queue.Position(), model.current)
+	}
+
+	model.playNext()
+	if model.queue.Position() != 2 || model.current != 2 || len(controller.loads) != 3 || controller.loads[2] != "/music/working.mp3" {
+		t.Fatalf("position=%d current=%d loads=%v", model.queue.Position(), model.current, controller.loads)
+	}
+}
+
 func TestRemovingActiveQueueItemKeepsPlaybackAndNavigation(t *testing.T) {
 	controller := &fakePlayer{events: make(chan player.Event)}
 	model := New([]library.Track{
@@ -728,14 +756,15 @@ func TestViewFitsNarrowWindows(t *testing.T) {
 }
 
 type fakePlayer struct {
-	events chan player.Event
-	loads  []string
+	events     chan player.Event
+	loads      []string
+	loadErrors map[string]error
 }
 
 func (f *fakePlayer) Events() <-chan player.Event { return f.events }
 func (f *fakePlayer) Load(path string) error {
 	f.loads = append(f.loads, path)
-	return nil
+	return f.loadErrors[path]
 }
 func (f *fakePlayer) TogglePause() error         { return nil }
 func (f *fakePlayer) Stop() error                { return nil }
