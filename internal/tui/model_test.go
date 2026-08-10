@@ -310,6 +310,28 @@ func TestOpeningPlaylistsRecoversInvalidStore(t *testing.T) {
 	}
 }
 
+func TestSavingPlaylistRetriesAfterStoreRecovery(t *testing.T) {
+	store := playlist.NewStore(filepath.Join(t.TempDir(), "playlists.json"))
+	if err := os.WriteFile(store.Path(), []byte(`{"version":99,"playlists":[]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	track := library.Track{Name: "One", Path: "/music/one.mp3"}
+	model := New([]library.Track{track}, nil, store)
+	model.queue.Replace([]int{0}, -1)
+	model.playlistName.SetValue("Recovered")
+	model.submitPlaylistName()
+
+	if model.errText != "" || model.loadedPlaylist != "Recovered" {
+		t.Fatalf("save result: error=%q loaded=%q", model.errText, model.loadedPlaylist)
+	}
+	if _, err := store.Load("Recovered"); err != nil {
+		t.Fatalf("recovered playlist was not saved: %v", err)
+	}
+	if !strings.Contains(model.noticeText, "yedeklendi") || !strings.Contains(model.noticeText, "kaydedildi") {
+		t.Fatalf("notice = %q", model.noticeText)
+	}
+}
+
 func TestExistingPlaylistRequiresOverwriteConfirmation(t *testing.T) {
 	store := playlist.NewStore(filepath.Join(t.TempDir(), "playlists.json"))
 	tracks := []library.Track{{Name: "One", Path: "/music/one.mp3"}}

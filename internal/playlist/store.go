@@ -107,7 +107,7 @@ func (s *Store) Load(name string) (Playlist, error) {
 			return err
 		}
 		for _, item := range data.Playlists {
-			if item.Name == name {
+			if sameName(item.Name, name) {
 				found = clonePlaylist(item)
 				return nil
 			}
@@ -136,7 +136,7 @@ func (s *Store) Save(name string, tracks []string, overwrite bool) error {
 		}
 		found := -1
 		for index, item := range data.Playlists {
-			if item.Name == name {
+			if sameName(item.Name, name) {
 				found = index
 				break
 			}
@@ -166,7 +166,7 @@ func (s *Store) Delete(name string) error {
 			return err
 		}
 		for index, item := range data.Playlists {
-			if item.Name != name {
+			if !sameName(item.Name, name) {
 				continue
 			}
 			data.Playlists = append(data.Playlists[:index], data.Playlists[index+1:]...)
@@ -276,16 +276,18 @@ func validateFileData(data fileData) error {
 	if data.Version != fileVersion {
 		return fmt.Errorf("desteklenmeyen dosya sürümü: %d", data.Version)
 	}
-	seen := make(map[string]struct{}, len(data.Playlists))
+	seen := make([]string, 0, len(data.Playlists))
 	for _, item := range data.Playlists {
 		name, err := validateName(item.Name)
 		if err != nil {
 			return fmt.Errorf("geçersiz kayıtlı çalma listesi: %w", err)
 		}
-		if _, ok := seen[name]; ok {
-			return fmt.Errorf("yinelenen çalma listesi adı: %s", name)
+		for _, existing := range seen {
+			if sameName(existing, name) {
+				return fmt.Errorf("yinelenen çalma listesi adı: %s", name)
+			}
 		}
-		seen[name] = struct{}{}
+		seen = append(seen, name)
 		if _, err := validateTracks(item.Tracks, true); err != nil {
 			return fmt.Errorf("%s çalma listesi geçersiz: %w", name, err)
 		}
@@ -317,6 +319,10 @@ func validateTracks(tracks []string, requireAbsolute bool) ([]string, error) {
 		validated = append(validated, cleaned)
 	}
 	return validated, nil
+}
+
+func sameName(left, right string) bool {
+	return strings.EqualFold(left, right)
 }
 
 func validateName(name string) (string, error) {

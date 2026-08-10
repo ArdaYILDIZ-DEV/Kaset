@@ -70,7 +70,7 @@ func (m Model) updatePlaylistName(message tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) submitPlaylistName() {
 	name := strings.TrimSpace(m.playlistName.Value())
-	err := m.playlistStore.Save(name, m.queuePaths(), false)
+	recoveryNotice, err := m.savePlaylistWithRecovery(name, false)
 	if errors.Is(err, playlist.ErrExists) {
 		m.pendingName = name
 		m.prompt = promptOverwrite
@@ -82,23 +82,41 @@ func (m *Model) submitPlaylistName() {
 		m.setError(err.Error())
 		return
 	}
-	m.finishPlaylistSave(name)
+	m.finishPlaylistSave(name, recoveryNotice)
 }
 
 func (m *Model) savePlaylist(name string, overwrite bool) {
-	if err := m.playlistStore.Save(name, m.queuePaths(), overwrite); err != nil {
+	recoveryNotice, err := m.savePlaylistWithRecovery(name, overwrite)
+	if err != nil {
 		m.setError(err.Error())
 		return
 	}
-	m.finishPlaylistSave(name)
+	m.finishPlaylistSave(name, recoveryNotice)
 }
 
-func (m *Model) finishPlaylistSave(name string) {
+// savePlaylistWithRecovery retries once after a corrupt store is moved aside.
+func (m *Model) savePlaylistWithRecovery(name string, overwrite bool) (string, error) {
+	err := m.playlistStore.Save(name, m.queuePaths(), overwrite)
+	var recovery *playlist.RecoveryError
+	if !errors.As(err, &recovery) {
+		return "", err
+	}
+	if err := m.playlistStore.Save(name, m.queuePaths(), overwrite); err != nil {
+		return "", err
+	}
+	return recovery.Error(), nil
+}
+
+func (m *Model) finishPlaylistSave(name, recoveryNotice string) {
 	m.prompt = promptNone
 	m.pendingName = ""
 	m.playlistName.Blur()
 	m.loadedPlaylist = name
 	if !m.refreshPlaylists() {
+		return
+	}
+	if recoveryNotice != "" {
+		m.setNotice(fmt.Sprintf("%s; çalma listesi kaydedildi: %s", recoveryNotice, name))
 		return
 	}
 	m.setNotice(fmt.Sprintf("Çalma listesi kaydedildi: %s", name))
@@ -138,7 +156,7 @@ func (m *Model) deletePendingPlaylist() {
 	}
 	m.prompt = promptNone
 	m.pendingName = ""
-	if m.loadedPlaylist == name {
+	if strings.EqualFold(m.loadedPlaylist, name) {
 		m.loadedPlaylist = ""
 	}
 	if !m.refreshPlaylists() {

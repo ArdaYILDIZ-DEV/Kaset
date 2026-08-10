@@ -32,6 +32,37 @@ func TestSaveLoadAndOverwrite(t *testing.T) {
 	}
 }
 
+func TestPlaylistNamesAreCaseInsensitive(t *testing.T) {
+	store := NewStore(filepath.Join(t.TempDir(), "playlists.json"))
+	track := filepath.Join(t.TempDir(), "track.mp3")
+	if err := store.Save("Jazz", []string{track}, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Save("jazz", []string{track}, false); !errors.Is(err, ErrExists) {
+		t.Fatalf("Save(case-variant) error = %v, want ErrExists", err)
+	}
+	if _, err := store.Load("JAZZ"); err != nil {
+		t.Fatalf("Load(case-variant) error = %v", err)
+	}
+	if err := store.Delete("jAzZ"); err != nil {
+		t.Fatalf("Delete(case-variant) error = %v", err)
+	}
+}
+
+func TestValidateFileDataRejectsCaseInsensitiveDuplicateNames(t *testing.T) {
+	track := filepath.Join(t.TempDir(), "track.mp3")
+	err := validateFileData(fileData{
+		Version: fileVersion,
+		Playlists: []Playlist{
+			{Name: "Jazz", Tracks: []string{track}},
+			{Name: "jazz", Tracks: []string{track}},
+		},
+	})
+	if err == nil {
+		t.Fatal("validateFileData() accepted case-insensitive duplicate names")
+	}
+}
+
 func TestListSortsAndReturnsCopies(t *testing.T) {
 	store := NewStore(filepath.Join(t.TempDir(), "playlists.json"))
 	track := filepath.Join(t.TempDir(), "track.mp3")
