@@ -447,6 +447,70 @@ func TestLibraryRefreshRemapsQueueAndCurrentTrackByPath(t *testing.T) {
 	}
 }
 
+func TestLibraryRefreshPreservesDetachedNextTrack(t *testing.T) {
+	controller := &fakePlayer{events: make(chan player.Event)}
+	model := NewWithOptions([]library.Track{
+		{Name: "Previous", Path: "/music/previous.mp3"},
+		{Name: "Current", Path: "/music/current.mp3"},
+		{Name: "Next", Path: "/music/next.mp3"},
+		{Name: "Later", Path: "/music/later.mp3"},
+	}, controller, Options{LibraryRoot: "/music"})
+	model.queue.Replace([]int{0, 1, 2, 3}, -1)
+	if !model.playQueueAt(1) {
+		t.Fatal("initial play failed")
+	}
+	model.queueCursor = 1
+	model.removeQueueItem()
+
+	model.applyLibraryScan(libraryScanMsg{tracks: []library.Track{
+		{Name: "Later", Path: "/music/later.mp3"},
+		{Name: "Next", Path: "/music/next.mp3"},
+		{Name: "Current", Path: "/music/current.mp3"},
+		{Name: "Previous", Path: "/music/previous.mp3"},
+	}})
+	if got := model.queue.Items(); !equalInts(got, []int{3, 1, 0}) {
+		t.Fatalf("queue = %v, want [3 1 0]", got)
+	}
+	if next, ok := model.queue.NextPosition(); !ok || next != 1 {
+		t.Fatalf("NextPosition() = %d, %v; want 1, true", next, ok)
+	}
+
+	model.handlePlayerEvent(player.Event{Type: player.EventEndFile, Reason: "eof"})
+	if model.current != 1 || model.queue.Position() != 1 || len(controller.loads) != 2 || controller.loads[1] != "/music/next.mp3" {
+		t.Fatalf("current=%d position=%d loads=%v", model.current, model.queue.Position(), controller.loads)
+	}
+}
+
+func TestLibraryRefreshSkipsMissingDetachedNextTrack(t *testing.T) {
+	controller := &fakePlayer{events: make(chan player.Event)}
+	model := NewWithOptions([]library.Track{
+		{Name: "Previous", Path: "/music/previous.mp3"},
+		{Name: "Current", Path: "/music/current.mp3"},
+		{Name: "Missing Next", Path: "/music/missing-next.mp3"},
+		{Name: "Later", Path: "/music/later.mp3"},
+	}, controller, Options{LibraryRoot: "/music"})
+	model.queue.Replace([]int{0, 1, 2, 3}, -1)
+	if !model.playQueueAt(1) {
+		t.Fatal("initial play failed")
+	}
+	model.queueCursor = 1
+	model.removeQueueItem()
+
+	model.applyLibraryScan(libraryScanMsg{tracks: []library.Track{
+		{Name: "Later", Path: "/music/later.mp3"},
+		{Name: "Current", Path: "/music/current.mp3"},
+		{Name: "Previous", Path: "/music/previous.mp3"},
+	}})
+	if next, ok := model.queue.NextPosition(); !ok || next != 1 {
+		t.Fatalf("NextPosition() = %d, %v; want 1, true", next, ok)
+	}
+
+	model.handlePlayerEvent(player.Event{Type: player.EventEndFile, Reason: "eof"})
+	if model.current != 0 || len(controller.loads) != 2 || controller.loads[1] != "/music/later.mp3" {
+		t.Fatalf("current=%d loads=%v", model.current, controller.loads)
+	}
+}
+
 func TestSearchHandlesTurkishCase(t *testing.T) {
 	model := New([]library.Track{
 		{Name: "Işık", Path: "/music/isik.mp3"},

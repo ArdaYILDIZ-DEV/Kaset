@@ -29,6 +29,27 @@ func (q Queue) Position() int {
 	return q.position
 }
 
+// DetachedNextPosition returns the first upcoming queue position after the
+// active item was removed. The position can equal Len when nothing remains
+// ahead of the detached item.
+func (q Queue) DetachedNextPosition() (int, bool) {
+	if q.position >= 0 || q.detachedNext < 0 {
+		return 0, false
+	}
+	return q.detachedNext, true
+}
+
+// SetDetachedNextPosition restores a detached playback boundary. It accepts
+// Len as a boundary after the final queued item and returns false for invalid
+// positions or while a queue item is active.
+func (q *Queue) SetDetachedNextPosition(position int) bool {
+	if q.position >= 0 || position < 0 || position > len(q.items) {
+		return false
+	}
+	q.detachedNext = position
+	return true
+}
+
 // ItemAt returns the library index at position.
 func (q Queue) ItemAt(position int) (int, bool) {
 	if position < 0 || position >= len(q.items) {
@@ -110,16 +131,11 @@ func (q *Queue) Move(from, to int) bool {
 	}
 	q.items[to] = item
 
-	switch {
-	case q.position == from:
-		q.position = to
-	case from < q.position && to >= q.position:
-		q.position--
-	case from > q.position && to <= q.position:
-		q.position++
+	if q.position >= 0 {
+		q.position = movedPosition(q.position, from, to)
 	}
-	if q.detachedNext >= 0 {
-		q.detachedNext = movedBoundary(q.detachedNext, from, to)
+	if q.detachedNext >= 0 && q.detachedNext < len(q.items) {
+		q.detachedNext = movedPosition(q.detachedNext, from, to)
 	}
 	return true
 }
@@ -176,15 +192,17 @@ func (q *Queue) Clear() {
 	q.detachedNext = -1
 }
 
-// movedBoundary keeps a detached playback boundary stable while items move around it.
-func movedBoundary(boundary, from, to int) int {
+// movedPosition returns the new index of one tracked queue item after a move.
+func movedPosition(position, from, to int) int {
 	switch {
-	case from < boundary && to >= boundary:
-		return boundary - 1
-	case from >= boundary && to < boundary:
-		return boundary + 1
+	case position == from:
+		return to
+	case from < position && to >= position:
+		return position - 1
+	case from > position && to <= position:
+		return position + 1
 	default:
-		return boundary
+		return position
 	}
 }
 

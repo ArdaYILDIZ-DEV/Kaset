@@ -68,6 +68,7 @@ func (m *Model) applyLibraryScan(message libraryScanMsg) {
 
 	oldItems := m.queue.Items()
 	oldPosition := m.queue.Position()
+	oldDetachedNext, wasDetached := m.queue.DetachedNextPosition()
 	oldPaths := make([]string, 0, len(oldItems))
 	for _, trackIndex := range oldItems {
 		if trackIndex >= 0 && trackIndex < len(m.tracks) {
@@ -85,6 +86,7 @@ func (m *Model) applyLibraryScan(message libraryScanMsg) {
 
 	remapped := make([]int, 0, len(oldPaths))
 	newPosition := -1
+	newDetachedNext := 0
 	missing := 0
 	for oldQueuePosition, path := range oldPaths {
 		trackIndex, ok := trackByPath[path]
@@ -96,8 +98,14 @@ func (m *Model) applyLibraryScan(message libraryScanMsg) {
 		if oldQueuePosition == oldPosition {
 			newPosition = len(remapped) - 1
 		}
+		if wasDetached && oldQueuePosition < oldDetachedNext {
+			newDetachedNext++
+		}
 	}
 	m.queue.Replace(remapped, newPosition)
+	if wasDetached {
+		_ = m.queue.SetDetachedNextPosition(newDetachedNext)
+	}
 	m.queueCursor = clampCursor(m.queueCursor, m.queue.Len())
 	if missing > 0 {
 		m.loadedPlaylist = ""

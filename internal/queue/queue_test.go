@@ -65,6 +65,54 @@ func TestRemovingActiveDetachesPlaybackAndPreservesNavigation(t *testing.T) {
 	}
 }
 
+func TestMoveKeepsDetachedNextTrack(t *testing.T) {
+	tests := []struct {
+		name      string
+		from, to  int
+		wantItems []int
+		wantNext  int
+	}{
+		{
+			name:      "moves next track earlier",
+			from:      1,
+			to:        0,
+			wantItems: []int{30, 10, 40},
+			wantNext:  0,
+		},
+		{
+			name:      "moves next track later",
+			from:      1,
+			to:        2,
+			wantItems: []int{10, 40, 30},
+			wantNext:  2,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			q := New()
+			q.Replace([]int{10, 20, 30, 40}, 1)
+			if _, ok := q.Remove(1); !ok {
+				t.Fatal("Remove() = false")
+			}
+			if !q.Move(test.from, test.to) {
+				t.Fatal("Move() = false")
+			}
+			if got := q.Items(); !reflect.DeepEqual(got, test.wantItems) {
+				t.Fatalf("Items() = %v, want %v", got, test.wantItems)
+			}
+			next, ok := q.NextPosition()
+			if !ok || next != test.wantNext {
+				t.Fatalf("NextPosition() = %d, %v; want %d, true", next, ok, test.wantNext)
+			}
+			track, _ := q.ItemAt(next)
+			if track != 30 {
+				t.Fatalf("next track = %d, want 30", track)
+			}
+		})
+	}
+}
+
 func TestShuffleUpcomingPreservesHistoryAndActiveTrack(t *testing.T) {
 	q := New()
 	q.Replace([]int{10, 20, 30, 40, 50}, 1)
