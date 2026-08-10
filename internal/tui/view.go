@@ -160,11 +160,15 @@ func (m Model) libraryView(width, available int) []string {
 			if width < 3 {
 				lines = append(lines, accentStyle.Render(truncate("/", width)))
 			} else {
-				m.search.Width = max(1, width-lipgloss.Width(m.search.Prompt))
-				lines = append(lines, m.search.View())
+				search := m.search
+				search.Width = max(1, width-lipgloss.Width(search.Prompt))
+				if value := sanitize(search.Value()); value != search.Value() {
+					search.SetValue(value)
+				}
+				lines = append(lines, search.View())
 			}
 		} else {
-			query := fmt.Sprintf("/ %s  ·  Esc temizle", m.search.Value())
+			query := fmt.Sprintf("/ %s  ·  Esc temizle", sanitize(m.search.Value()))
 			lines = append(lines, dimStyle.Render(truncate(query, width)))
 		}
 		available--
@@ -327,8 +331,12 @@ func (m Model) promptView(width, available int) []string {
 	if width < 3 {
 		lines = append(lines, accentStyle.Render(truncate(">", width)))
 	} else {
-		m.playlistName.Width = max(1, width-lipgloss.Width(m.playlistName.Prompt))
-		lines = append(lines, m.playlistName.View())
+		playlistName := m.playlistName
+		playlistName.Width = max(1, width-lipgloss.Width(playlistName.Prompt))
+		if value := sanitize(playlistName.Value()); value != playlistName.Value() {
+			playlistName.SetValue(value)
+		}
+		lines = append(lines, playlistName.View())
 	}
 	available--
 	if available > 0 {

@@ -97,6 +97,28 @@ func TestSanitizeRemovesTerminalControls(t *testing.T) {
 	}
 }
 
+func TestTextInputViewsSanitizeTerminalControls(t *testing.T) {
+	model := New([]library.Track{{Name: "Track", Path: "/music/track.mp3"}}, nil)
+	model.width = 80
+	model.height = 24
+
+	model.search.SetValue("find\x1b[31m")
+	model.searching = true
+	if view := model.View(); strings.Contains(view, "find\x1b[31m") {
+		t.Fatalf("search input leaked a terminal control sequence: %q", view)
+	}
+	model.searching = false
+	if view := model.View(); strings.Contains(view, "find\x1b[31m") {
+		t.Fatalf("inactive search leaked a terminal control sequence: %q", view)
+	}
+
+	model.prompt = promptPlaylistName
+	model.playlistName.SetValue("mix\x1b[31m")
+	if view := model.View(); strings.Contains(view, "mix\x1b[31m") {
+		t.Fatalf("playlist input leaked a terminal control sequence: %q", view)
+	}
+}
+
 func TestSearchFirstEscapeClosesSecondEscapeClears(t *testing.T) {
 	model := New([]library.Track{
 		{Name: "Demo Track", Path: "/music/demo.mp3"},
