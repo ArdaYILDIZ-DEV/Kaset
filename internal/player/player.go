@@ -28,7 +28,11 @@ const (
 	EventError
 )
 
-const commandTimeout = time.Second
+// commandTimeout bounds how long Start() waits for each observe_property reply and
+// how long interactive commands (seek, volume) wait for mpv to respond. It is
+// deliberately lenient: the previous one-second value produced spurious timeout
+// errors when mpv was slow to start or busy seeking under system load.
+const commandTimeout = 2 * time.Second
 
 // Event is a state change received from mpv.
 type Event struct {
