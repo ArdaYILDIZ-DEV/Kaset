@@ -366,13 +366,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "z":
 		m.shuffleUpcoming()
 	case "+", "=", "]":
-		if m.run(func() error { return m.player.ChangeVolume(5) }) {
-			m.volume = min(100, m.volume+5)
-		}
+		m.run(func() error { return m.player.ChangeVolume(5) })
 	case "-", "[":
-		if m.run(func() error { return m.player.ChangeVolume(-5) }) {
-			m.volume = max(0, m.volume-5)
-		}
+		m.run(func() error { return m.player.ChangeVolume(-5) })
 	case "m":
 		m.run(func() error { return m.player.ToggleMute() })
 	case "s":
