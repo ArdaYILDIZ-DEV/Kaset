@@ -141,11 +141,15 @@ func (s *Store) Save(settings Settings) error {
 // withLock serializes access across processes and enforces private directory permissions.
 func (s *Store) withLock(action func() error) error {
 	directory := filepath.Dir(s.path)
-	if err := os.MkdirAll(directory, 0o700); err != nil {
-		return fmt.Errorf("ayar klasörü oluşturulamadı: %w", err)
-	}
-	if err := os.Chmod(directory, 0o700); err != nil {
-		return fmt.Errorf("ayar klasörü izinleri ayarlanamadı: %w", err)
+	// Restrict permissions only when the directory is first created; re-applying
+	// chmod on every call (including read-only loads) is an unnecessary side effect.
+	if _, statErr := os.Stat(directory); errors.Is(statErr, os.ErrNotExist) {
+		if err := os.MkdirAll(directory, 0o700); err != nil {
+			return fmt.Errorf("ayar klasörü oluşturulamadı: %w", err)
+		}
+		if err := os.Chmod(directory, 0o700); err != nil {
+			return fmt.Errorf("ayar klasörü izinleri ayarlanamadı: %w", err)
+		}
 	}
 	lock, err := os.OpenFile(s.path+".lock", os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
@@ -162,15 +166,30 @@ func (s *Store) withLock(action func() error) error {
 // recoverInvalid preserves corrupt settings before the caller falls back to defaults.
 func (s *Store) recoverInvalid(cause error) error {
 	backupPath := fmt.Sprintf("%s.corrupt-%s", s.path, time.Now().Format("20060102-150405.000000000"))
+	// Two corruptions in the same nanosecond would otherwise overwrite each other;
+	// fall back to numbered suffixes until a free name is found.
+	for attempt := 1; !fileIsFree(backupPath) && attempt <= 1000; attempt++ {
+		backupPath = fmt.Sprintf("%s-%d", backupPath, attempt)
+	}
 	if err := os.Rename(s.path, backupPath); err != nil {
 		return fmt.Errorf("geçersiz ayar dosyası yedeklenemedi: %v; asıl hata: %w", err, cause)
 	}
 	return &RecoveryError{BackupPath: backupPath, Cause: cause}
 }
 
+// fileIsFree reports whether path does not yet exist on disk.
+func fileIsFree(path string) bool {
+	_, err := os.Stat(path)
+	return errors.Is(err, os.ErrNotExist)
+}
+
 // validate rejects settings that cannot be safely restored in a later session.
 func validate(settings Settings) error {
-	if settings.Version != fileVersion {
+	// Version 0 is an unversioned (legacy) file written before versioning existed.
+	// The schema is identical to the current one, so it is accepted instead of
+	// being moved aside as corrupt; a future incompatible format will still be
+	// rejected by the version mismatch below.
+	if settings.Version != fileVersion && settings.Version != 0 {
 		return fmt.Errorf("desteklenmeyen ayar dosyası sürümü: %d", settings.Version)
 	}
 	if settings.Library != "" && !filepath.IsAbs(settings.Library) {

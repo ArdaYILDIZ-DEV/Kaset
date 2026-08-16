@@ -220,10 +220,21 @@ func (s *Store) read() (fileData, error) {
 // recoverInvalid moves corrupt data aside instead of overwriting it.
 func (s *Store) recoverInvalid(cause error) error {
 	backupPath := fmt.Sprintf("%s.corrupt-%s", s.path, time.Now().Format("20060102-150405.000000000"))
+	// Two corruptions in the same nanosecond would otherwise overwrite each other;
+	// fall back to numbered suffixes until a free name is found.
+	for attempt := 1; !fileIsFree(backupPath) && attempt <= 1000; attempt++ {
+		backupPath = fmt.Sprintf("%s-%d", backupPath, attempt)
+	}
 	if err := os.Rename(s.path, backupPath); err != nil {
 		return fmt.Errorf("geçersiz çalma listesi dosyası yedeklenemedi: %v; asıl hata: %w", err, cause)
 	}
 	return &RecoveryError{BackupPath: backupPath, Cause: cause}
+}
+
+// fileIsFree reports whether path does not yet exist on disk.
+func fileIsFree(path string) bool {
+	_, err := os.Stat(path)
+	return errors.Is(err, os.ErrNotExist)
 }
 
 // write uses a synced temporary file and rename to avoid partial JSON updates.
@@ -260,11 +271,15 @@ func (s *Store) write(data fileData) error {
 }
 
 func ensurePrivateDirectory(directory string) error {
-	if err := os.MkdirAll(directory, 0o700); err != nil {
-		return fmt.Errorf("çalma listesi klasörü oluşturulamadı: %w", err)
-	}
-	if err := os.Chmod(directory, 0o700); err != nil {
-		return fmt.Errorf("çalma listesi klasörü izinleri ayarlanamadı: %w", err)
+	// Restrict permissions only when the directory is first created; re-applying
+	// chmod on every call (including read-only loads) is an unnecessary side effect.
+	if _, statErr := os.Stat(directory); errors.Is(statErr, os.ErrNotExist) {
+		if err := os.MkdirAll(directory, 0o700); err != nil {
+			return fmt.Errorf("çalma listesi klasörü oluşturulamadı: %w", err)
+		}
+		if err := os.Chmod(directory, 0o700); err != nil {
+			return fmt.Errorf("çalma listesi klasörü izinleri ayarlanamadı: %w", err)
+		}
 	}
 	return nil
 }
@@ -275,7 +290,11 @@ func emptyFileData() fileData {
 
 // validateFileData checks the on-disk schema, names, and absolute track paths.
 func validateFileData(data fileData) error {
-	if data.Version != fileVersion {
+	// Version 0 is an unversioned (legacy) file written before versioning existed.
+	// The schema is identical to the current one, so it is accepted instead of
+	// being moved aside as corrupt; a future incompatible format will still be
+	// rejected by the version mismatch below.
+	if data.Version != fileVersion && data.Version != 0 {
 		return fmt.Errorf("desteklenmeyen dosya sürümü: %d", data.Version)
 	}
 	seen := make([]string, 0, len(data.Playlists))
