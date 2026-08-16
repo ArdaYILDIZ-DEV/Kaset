@@ -79,6 +79,7 @@ func (m *Model) applyLibraryScan(message libraryScanMsg) {
 	}
 
 	m.tracks = message.tracks
+	m.searchIndex = buildSearchIndex(m.tracks)
 	trackByPath := make(map[string]int, len(m.tracks))
 	for index, track := range m.tracks {
 		trackByPath[filepath.Clean(track.Path)] = index
@@ -155,13 +156,58 @@ func (m *Model) refreshFilter() {
 	m.refreshFilterKeeping(selectedPath)
 }
 
+// searchableTrack holds precomputed, normalized forms of one track's searchable
+// fields so filtering does not re-normalize the same strings on every keystroke.
+// name/path/folder use Turkish case rules; the *Fold variants use general Unicode
+// case folding. Both are kept to preserve the original match behavior.
+type searchableTrack struct {
+	name       string
+	path       string
+	folder     string
+	nameFold   string
+	pathFold   string
+	folderFold string
+}
+
+// buildSearchIndex precomputes normalized search keys for tracks once, aligned
+// 1:1 with the provided slice.
+func buildSearchIndex(tracks []library.Track) []searchableTrack {
+	entries := make([]searchableTrack, len(tracks))
+	for index, track := range tracks {
+		entries[index] = searchableTrack{
+			name:       turkishLower.String(track.Name),
+			path:       turkishLower.String(track.Path),
+			folder:     turkishLower.String(track.Folder),
+			nameFold:   unicodeFold.String(track.Name),
+			pathFold:   unicodeFold.String(track.Path),
+			folderFold: unicodeFold.String(track.Folder),
+		}
+	}
+	return entries
+}
+
 // refreshFilterKeeping rebuilds search results while preserving the selected track when possible.
 func (m *Model) refreshFilterKeeping(selectedPath string) {
 	query := strings.TrimSpace(m.search.Value())
 	m.filtered = m.filtered[:0]
-	for index, track := range m.tracks {
-		if query == "" || searchContains(track.Name, query) || searchContains(track.Path, query) || searchContains(track.Folder, query) {
+	if query == "" {
+		for index := range m.tracks {
 			m.filtered = append(m.filtered, index)
+		}
+	} else {
+		// Normalize the query once; track keys are precomputed at load time.
+		queryLower := turkishLower.String(query)
+		queryFold := unicodeFold.String(query)
+		for index := range m.tracks {
+			entry := m.searchIndex[index]
+			if strings.Contains(entry.name, queryLower) ||
+				strings.Contains(entry.path, queryLower) ||
+				strings.Contains(entry.folder, queryLower) ||
+				strings.Contains(entry.nameFold, queryFold) ||
+				strings.Contains(entry.pathFold, queryFold) ||
+				strings.Contains(entry.folderFold, queryFold) {
+				m.filtered = append(m.filtered, index)
+			}
 		}
 	}
 
@@ -175,12 +221,6 @@ func (m *Model) refreshFilterKeeping(selectedPath string) {
 			return
 		}
 	}
-}
-
-// searchContains combines Turkish casing rules with general Unicode case folding.
-func searchContains(value, query string) bool {
-	return strings.Contains(turkishLower.String(value), turkishLower.String(query)) ||
-		strings.Contains(unicodeFold.String(value), unicodeFold.String(query))
 }
 
 func (m Model) selectedIndex() int {

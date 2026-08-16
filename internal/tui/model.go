@@ -80,6 +80,7 @@ type Options struct {
 type Model struct {
 	tracks           []library.Track
 	filtered         []int
+	searchIndex      []searchableTrack
 	player           playbackController
 	playlistStore    *playlist.Store
 	playlists        []playlist.Playlist
@@ -161,6 +162,7 @@ func NewWithOptions(tracks []library.Track, mpv playbackController, options Opti
 	for index := range tracks {
 		filtered[index] = index
 	}
+	searchIndex := buildSearchIndex(tracks)
 	initialVolume := 100.0
 	if options.InitialVolume != nil {
 		initialVolume = max(0, min(100, *options.InitialVolume))
@@ -169,6 +171,7 @@ func NewWithOptions(tracks []library.Track, mpv playbackController, options Opti
 	return Model{
 		tracks:           tracks,
 		filtered:         filtered,
+		searchIndex:      searchIndex,
 		player:           mpv,
 		playlistStore:    options.PlaylistStore,
 		queue:            playqueue.New(),
