@@ -94,6 +94,7 @@ type Model struct {
 	title            string
 	artist           string
 	album            string
+	hasMetadataTitle bool
 	position         float64
 	duration         float64
 	volume           float64

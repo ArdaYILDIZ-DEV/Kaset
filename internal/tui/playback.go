@@ -102,6 +102,7 @@ func (m *Model) playTrack(trackIndex int) bool {
 	m.title = m.tracks[trackIndex].Name
 	m.artist = ""
 	m.album = ""
+	m.hasMetadataTitle = false
 	m.position = 0
 	m.duration = 0
 	m.paused = false
@@ -244,7 +245,10 @@ func (m *Model) handleProperty(name string, data any) {
 			m.muted = value
 		}
 	case "media-title":
-		if value, ok := data.(string); ok && value != "" {
+		// mpv delivers media-title and metadata events in an undefined order.
+		// Keep an explicit metadata title when present; media-title (usually the
+		// file name) only fills in when no track title came from metadata.
+		if value, ok := data.(string); ok && value != "" && !m.hasMetadataTitle {
 			m.title = value
 		}
 	case "metadata":
@@ -261,6 +265,7 @@ func (m *Model) handleProperty(name string, data any) {
 			case "title":
 				if text != "" {
 					m.title = text
+					m.hasMetadataTitle = true
 				}
 			case "artist":
 				m.artist = text
