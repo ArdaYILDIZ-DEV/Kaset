@@ -34,9 +34,12 @@ var supportedExtensions = map[string]struct{}{
 	".wma":  {},
 }
 
+// abs allows tests to inject failures for filepath.Abs.
+var abs = filepath.Abs
+
 // ScanWithIssues returns supported tracks and non-fatal traversal errors.
 func ScanWithIssues(root string) ([]Track, []ScanIssue, error) {
-	absoluteRoot, err := filepath.Abs(root)
+	absoluteRoot, err := abs(root)
 	if err != nil {
 		return nil, nil, fmt.Errorf("müzik klasörü çözümlenemedi: %w", err)
 	}
