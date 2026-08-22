@@ -123,6 +123,11 @@ func (q *Queue) Move(from, to int) bool {
 		return false
 	}
 
+	// Capture detached boundary before mutation. When detachedNext equals len
+	// it represents the boundary after the last item and must remain after
+	// last regardless of internal moves.
+	detachedWasAfterLast := q.detachedNext == len(q.items)
+
 	item := q.items[from]
 	if from < to {
 		copy(q.items[from:to], q.items[from+1:to+1])
@@ -134,8 +139,12 @@ func (q *Queue) Move(from, to int) bool {
 	if q.position >= 0 {
 		q.position = movedPosition(q.position, from, to)
 	}
-	if q.detachedNext >= 0 && q.detachedNext < len(q.items) {
-		q.detachedNext = movedPosition(q.detachedNext, from, to)
+	if q.detachedNext >= 0 {
+		if detachedWasAfterLast {
+			q.detachedNext = len(q.items)
+		} else if q.detachedNext < len(q.items) {
+			q.detachedNext = movedPosition(q.detachedNext, from, to)
+		}
 	}
 	return true
 }
