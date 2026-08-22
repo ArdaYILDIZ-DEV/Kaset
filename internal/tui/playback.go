@@ -99,7 +99,7 @@ func (m *Model) playTrack(trackIndex int) bool {
 		return false
 	}
 	m.current = trackIndex
-	m.title = m.tracks[trackIndex].Name
+	m.title = sanitize(m.tracks[trackIndex].Name)
 	m.artist = ""
 	m.album = ""
 	m.hasMetadataTitle = false
@@ -249,7 +249,7 @@ func (m *Model) handleProperty(name string, data any) {
 		// Keep an explicit metadata title when present; media-title (usually the
 		// file name) only fills in when no track title came from metadata.
 		if value, ok := data.(string); ok && value != "" && !m.hasMetadataTitle {
-			m.title = value
+			m.title = sanitize(value)
 		}
 	case "metadata":
 		metadata, ok := data.(map[string]any)
@@ -264,13 +264,13 @@ func (m *Model) handleProperty(name string, data any) {
 			switch strings.ToLower(key) {
 			case "title":
 				if text != "" {
-					m.title = text
+					m.title = sanitize(text)
 					m.hasMetadataTitle = true
 				}
 			case "artist":
-				m.artist = text
+				m.artist = sanitize(text)
 			case "album":
-				m.album = text
+				m.album = sanitize(text)
 			}
 		}
 	}
