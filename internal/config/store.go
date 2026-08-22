@@ -141,15 +141,17 @@ func (s *Store) Save(settings Settings) error {
 // withLock serializes access across processes and enforces private directory permissions.
 func (s *Store) withLock(action func() error) error {
 	directory := filepath.Dir(s.path)
-	// Restrict permissions only when the directory is first created; re-applying
-	// chmod on every call (including read-only loads) is an unnecessary side effect.
-	if _, statErr := os.Stat(directory); errors.Is(statErr, os.ErrNotExist) {
-		if err := os.MkdirAll(directory, 0o700); err != nil {
-			return fmt.Errorf("ayar klasörü oluşturulamadı: %w", err)
+	if err := os.MkdirAll(directory, 0o700); err != nil {
+		return fmt.Errorf("ayar klasörü oluşturulamadı: %w", err)
+	}
+	if info, err := os.Stat(directory); err == nil {
+		if info.Mode().Perm() != 0o700 {
+			if err := os.Chmod(directory, 0o700); err != nil {
+				return fmt.Errorf("ayar klasörü izinleri ayarlanamadı: %w", err)
+			}
 		}
-		if err := os.Chmod(directory, 0o700); err != nil {
-			return fmt.Errorf("ayar klasörü izinleri ayarlanamadı: %w", err)
-		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("ayar klasörü doğrulanamadı: %w", err)
 	}
 	lock, err := os.OpenFile(s.path+".lock", os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {

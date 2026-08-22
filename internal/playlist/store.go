@@ -271,15 +271,17 @@ func (s *Store) write(data fileData) error {
 }
 
 func ensurePrivateDirectory(directory string) error {
-	// Restrict permissions only when the directory is first created; re-applying
-	// chmod on every call (including read-only loads) is an unnecessary side effect.
-	if _, statErr := os.Stat(directory); errors.Is(statErr, os.ErrNotExist) {
-		if err := os.MkdirAll(directory, 0o700); err != nil {
-			return fmt.Errorf("çalma listesi klasörü oluşturulamadı: %w", err)
+	if err := os.MkdirAll(directory, 0o700); err != nil {
+		return fmt.Errorf("çalma listesi klasörü oluşturulamadı: %w", err)
+	}
+	if info, err := os.Stat(directory); err == nil {
+		if info.Mode().Perm() != 0o700 {
+			if err := os.Chmod(directory, 0o700); err != nil {
+				return fmt.Errorf("çalma listesi klasörü izinleri ayarlanamadı: %w", err)
+			}
 		}
-		if err := os.Chmod(directory, 0o700); err != nil {
-			return fmt.Errorf("çalma listesi klasörü izinleri ayarlanamadı: %w", err)
-		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("çalma listesi klasörü doğrulanamadı: %w", err)
 	}
 	return nil
 }
