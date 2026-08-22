@@ -142,6 +142,9 @@ func (m Model) updateSearch(message tea.Msg) (tea.Model, tea.Cmd) {
 	oldValue := m.search.Value()
 	var cmd tea.Cmd
 	m.search, cmd = m.search.Update(message)
+	if sanitized := sanitize(m.search.Value()); sanitized != m.search.Value() {
+		m.search.SetValue(sanitized)
+	}
 	if m.search.Value() != oldValue {
 		m.refreshFilter()
 	}

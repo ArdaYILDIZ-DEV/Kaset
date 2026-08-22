@@ -65,6 +65,9 @@ func (m Model) handlePromptKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) updatePlaylistName(message tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.playlistName, cmd = m.playlistName.Update(message)
+	if sanitized := sanitize(m.playlistName.Value()); sanitized != m.playlistName.Value() {
+		m.playlistName.SetValue(sanitized)
+	}
 	return m, cmd
 }
 
