@@ -103,14 +103,14 @@ func run() error {
 		HideSidePanel: settings.HideSidePanel,
 	})
 	program := tea.NewProgram(model, tea.WithAltScreen())
-	hangup := make(chan os.Signal, 1)
-	signal.Notify(hangup, syscall.SIGHUP)
-	defer signal.Stop(hangup)
+	terminate := make(chan os.Signal, 1)
+	signal.Notify(terminate, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(terminate)
 	programDone := make(chan struct{})
 	defer close(programDone)
 	go func() {
 		select {
-		case <-hangup:
+		case <-terminate:
 			program.Quit()
 		case <-programDone:
 		}
