@@ -68,12 +68,20 @@ func (q *Queue) Replace(items []int, position int) {
 
 // Append adds one library track index to the end of the queue.
 func (q *Queue) Append(trackIndex int) {
+	wasAfterLast := q.detachedNext == len(q.items)
 	q.items = append(q.items, trackIndex)
+	if wasAfterLast {
+		q.detachedNext = len(q.items)
+	}
 }
 
 // AppendMany adds library track indexes to the end in their current order.
 func (q *Queue) AppendMany(trackIndexes []int) {
+	wasAfterLast := q.detachedNext == len(q.items)
 	q.items = append(q.items, trackIndexes...)
+	if wasAfterLast {
+		q.detachedNext = len(q.items)
+	}
 }
 
 // SetPosition marks a queue item as active and returns its library index.
